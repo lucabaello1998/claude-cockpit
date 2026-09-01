@@ -78,6 +78,7 @@ contextBridge.exposeInMainWorld('cockpit', {
   adoConnection: () => call('adoConnection'),
   reqStatus: () => call('reqStatus'),
   briefing: (forzar) => call('briefing', forzar),
+  installState: () => call('installState'),
   updaterState: () => call('updaterState'),
   updaterCheck: () => call('updaterCheck'),
   updaterDownload: () => call('updaterDownload'),

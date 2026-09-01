@@ -57,6 +57,17 @@ installer.
 > `.exe` directly: that terminal sets `ELECTRON_RUN_AS_NODE=1` and Electron
 > starts as plain Node. `scripts/launch.cjs` strips that variable.
 
+## First run
+
+If Claude Code isn't installed on the machine, or is installed but never signed
+in, the app says so and walks you through it instead of opening onto empty
+panels. It re-checks on its own every few seconds, so you can leave the window
+open while you run the command.
+
+To be clear about what it can't do: **Claude Cockpit cannot sign you in.** The
+Claude Code login is an OAuth flow run by the CLI, which stores the token in
+your folder. This app only reads it, and only when you ask it to refresh usage.
+
 ## What you get
 
 | Panel | What it's for |

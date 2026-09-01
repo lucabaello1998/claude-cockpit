@@ -9,6 +9,7 @@ import BoardsPanel from './components/BoardsPanel.jsx';
 import { fmtAgo } from './util.js';
 import Consent from './components/Consent.jsx';
 import Repaso from './components/Repaso.jsx';
+import PrimerArranque from './components/PrimerArranque.jsx';
 import { setShowCosts, useShowCosts } from './money.js';
 
 const TABS = [
@@ -30,6 +31,9 @@ export default function App() {
   const [lastUpdate, setLastUpdate] = useState(null);
   const [consent, setConsent] = useState(null);
   // Cuantos consejos tiene el repaso, para el globito de la barra.
+  // Antes de todo: mirar si esta maquina tiene Claude Code instalado y usado.
+  // null = todavia no se sabe; un objeto con estado != 'listo' = falta algo.
+  const [instalacion, setInstalacion] = useState(null);
   const [repaso, setRepaso] = useState(0);
   // Un consejo puede mandarte a una seccion puntual de Configuración.
   const [seccionConfig, setSeccionConfig] = useState(null);
@@ -57,6 +61,12 @@ export default function App() {
   }, [flash]);
 
   // El repaso se arma una vez por dia; aca solo se cuenta para el globito.
+  useEffect(() => {
+    window.cockpit.installState()
+      .then(setInstalacion)
+      .catch(() => setInstalacion({ estado: 'listo' }));
+  }, []);
+
   useEffect(() => {
     window.cockpit.briefing(false)
       .then((r) => setRepaso((r.items || []).length))
@@ -199,7 +209,12 @@ export default function App() {
         </div>
       </main>
 
-      {consent === false && <Consent onAccept={() => setConsent(true)} flash={flash} />}
+      {instalacion && instalacion.estado !== 'listo' && (
+        <PrimerArranque info={instalacion} onListo={() => setInstalacion({ estado: 'listo' })} />
+      )}
+      {instalacion && instalacion.estado === 'listo' && consent === false && (
+        <Consent onAccept={() => setConsent(true)} flash={flash} />
+      )}
 
       {toast && (
         <div className={'toast' + (toast.isError ? ' err' : '')}>{toast.text}</div>

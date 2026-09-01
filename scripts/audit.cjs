@@ -1084,6 +1084,44 @@ console.log('\n-- ronda 13: auto-update --');
     !!(pj.dependencies || {})['electron-updater']);
 }
 console.log();
+
+// ---------------------------------------------------------------------------
+// Ronda 14: primer arranque en una maquina sin Claude Code.
+// ---------------------------------------------------------------------------
+console.log('\n-- ronda 14: primer arranque --');
+{
+  const inst = require(B + 'src/main/instalacion.cjs');
+  const src = fs.readFileSync(B + 'src/main/instalacion.cjs', 'utf8');
+
+  esperar('se distinguen los cuatro estados',
+    Object.keys(inst.ESTADOS).length === 4, Object.keys(inst.ESTADOS).join(','));
+
+  // La app NO puede loguear a nadie: el OAuth lo corre el CLI de Claude Code.
+  // Prometer un login que no existe seria peor que explicar el paso real.
+  esperar('no se promete un login que la app no puede hacer',
+    /no puede loguearte|NO puede loguearte/.test(src));
+  esperar('se detecta si el CLI existe en el PATH', /execFile\(cmd, \['claude'\]/.test(src));
+  esperar('el estado sin sesion mira las credenciales',
+    /\.credentials\.json/.test(src));
+
+  // Cada estado tiene que traer un paso concreto, no solo el diagnostico.
+  const ui = fs.readFileSync(B + 'src/renderer/components/PrimerArranque.jsx', 'utf8');
+  esperar('la pantalla muestra los comandos y deja copiarlos',
+    /clipboard\.writeText/.test(ui));
+  esperar('se revisa sola, sin obligar a apretar un boton',
+    /setInterval\(revisar/.test(ui));
+
+  // Va antes del consentimiento: no tiene sentido explicarle que se leen sus
+  // archivos a alguien que todavia no tiene ninguno.
+  const app = fs.readFileSync(B + 'src/renderer/App.jsx', 'utf8');
+  const iPrimer = app.indexOf('PrimerArranque info=');
+  const iConsent = app.indexOf('<Consent onAccept');
+  esperar('el primer arranque se muestra ANTES del consentimiento',
+    iPrimer > 0 && iConsent > 0 && iPrimer < iConsent);
+  esperar('el consentimiento solo aparece si la instalacion esta lista',
+    /instalacion\.estado === 'listo' && consent === false/.test(app));
+}
+console.log();
 console.log();
 console.log('='.repeat(60));
 console.log(`  ${pasa} pasan · ${falla} fallan`);
