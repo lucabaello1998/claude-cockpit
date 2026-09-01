@@ -1122,6 +1122,52 @@ console.log('\n-- ronda 14: primer arranque --');
     /instalacion\.estado === 'listo' && consent === false/.test(app));
 }
 console.log();
+
+// ---------------------------------------------------------------------------
+// Ronda 15: consumo de red.
+// ---------------------------------------------------------------------------
+console.log('\n-- ronda 15: red --');
+{
+  const src = fs.readFileSync(B + 'src/main/briefing.cjs', 'utf8');
+
+  // El changelog pesa ~574 KB. Bajarlo entero cada dia es tirar ancho de banda
+  // cuando GitHub responde 304 con cero bytes si no cambio.
+  esperar('se manda If-None-Match con el ETag guardado',
+    /If-None-Match/.test(src));
+  esperar('un 304 no vuelve a parsear ni descargar',
+    /statusCode === 304/.test(src) && /sinCambios/.test(src));
+  esperar('se guardan los bloques para poder refiltrar sin bajar de nuevo',
+    /previo\.bloques/.test(src));
+
+  // Nada puede quedar pegado a un temporizador sin que el usuario lo prenda.
+  const ov = fs.readFileSync(B + 'src/renderer/components/Overview.jsx', 'utf8');
+  esperar('el auto-refresco de uso viene APAGADO por defecto',
+    /localStorage\.getItem\('cockpit\.autoUsage'\) === '1'/.test(ov));
+
+  // El asistente de primer arranque revisa cada 5 s: tiene que ser LOCAL.
+  const inst = fs.readFileSync(B + 'src/main/instalacion.cjs', 'utf8');
+  esperar('la revision del primer arranque no toca la red',
+    !/https?\.(get|request)|fetch\(/.test(inst));
+
+  // El updater busca una vez al arrancar, no en bucle.
+  const up = fs.readFileSync(B + 'src/main/updater.cjs', 'utf8');
+  esperar('el updater no queda en bucle', !/setInterval/.test(up));
+
+  // Cada host tiene que estar fijo en el codigo, no armado desde una entrada.
+  const hosts = new Set();
+  for (const f of ['ado.cjs', 'briefing.cjs', 'updater.cjs', 'mcpRegistry.cjs',
+    'skillsRegistry.cjs', 'sources/liveUsage.cjs', 'sources/pricingFetch.cjs']) {
+    const t = fs.readFileSync(path.join(B, 'src/main', f), 'utf8');
+    for (const m of t.matchAll(/https:\/\/([a-z0-9.-]+)/g)) hosts.add(m[1]);
+  }
+  const esperados = new Set(['api.anthropic.com', 'dev.azure.com', 'platform.claude.com',
+    'raw.githubusercontent.com', 'registry.modelcontextprotocol.io', 'www.skills.sh',
+    'docs.claude.com', 'mcp.atlassian.com', 'miempresa.atlassian.net', 'github.com']);
+  const inesperados = [...hosts].filter((h) => !esperados.has(h));
+  esperar('no aparecio ningun host nuevo sin declarar', inesperados.length === 0,
+    inesperados.join(', '));
+}
+console.log();
 console.log();
 console.log('='.repeat(60));
 console.log(`  ${pasa} pasan · ${falla} fallan`);

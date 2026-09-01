@@ -5,7 +5,7 @@
 <p align="center">
   <img alt="Electron" src="https://img.shields.io/badge/Electron-44-2b2b28?style=flat-square&labelColor=1a1a18">
   <img alt="React" src="https://img.shields.io/badge/React-19-2b2b28?style=flat-square&labelColor=1a1a18">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-280%20passing-3d7a3d?style=flat-square&labelColor=1a1a18">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-287%20passing-3d7a3d?style=flat-square&labelColor=1a1a18">
   <img alt="No telemetry" src="https://img.shields.io/badge/telemetry-none-d97757?style=flat-square&labelColor=1a1a18">
   <img alt="Windows" src="https://img.shields.io/badge/Windows-installer-2b2b28?style=flat-square&labelColor=1a1a18">
 </p>
@@ -145,7 +145,7 @@ security model isn't an afterthought:
 npm run audit
 ```
 
-280 checks. Not smoke tests: they **actively try to exploit every write
+287 checks. Not smoke tests: they **actively try to exploit every write
 surface** (traversal, symlinks, command injection, prototype pollution, negative
 indices) and verify it stays contained. The suite grew out of real holes that
 were found and fixed.

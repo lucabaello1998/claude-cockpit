@@ -19,14 +19,20 @@ const { P, readJSON } = require('./sources/paths.cjs');
 const CHANGELOG = 'https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md';
 const DIA_MS = 86400000;
 
-function pedirTexto(url) {
+// El changelog pesa ~588 KB y solo cambia cuando sale una version de Claude
+// Code. Bajarlo entero una vez por dia es tirar ancho de banda: GitHub manda
+// ETag y responde 304 con CERO bytes si no cambio nada. Medido: 588 KB -> 0.
+function pedirTexto(url, etag) {
   return new Promise((resolve) => {
-    const req = https.get(url, { headers: { 'User-Agent': 'claude-cockpit/1.0' }, timeout: 15000 }, (res) => {
+    const headers = { 'User-Agent': 'claude-cockpit/1.0' };
+    if (etag) headers['If-None-Match'] = etag;
+    const req = https.get(url, { headers, timeout: 15000 }, (res) => {
+      if (res.statusCode === 304) { res.resume(); return resolve({ sinCambios: true }); }
       if (res.statusCode !== 200) { res.resume(); return resolve(null); }
       let b = '';
       res.setEncoding('utf8');
       res.on('data', (c) => { b += c; });
-      res.on('end', () => resolve(b));
+      res.on('end', () => resolve({ texto: b, etag: res.headers.etag || null }));
     });
     req.on('timeout', () => { req.destroy(); resolve(null); });
     req.on('error', () => resolve(null));
@@ -53,8 +59,20 @@ function masNueva(a, b) {
 // Que salio en Claude Code desde la version que estas usando. Es lo mas util
 // que se puede decir sin inventar nada: sale del changelog oficial y se filtra
 // contra TU version, no contra la ultima.
-async function novedades(versionActual) {
-  const md = await pedirTexto(CHANGELOG);
+// `previo` es lo que quedo guardado del repaso anterior: si el changelog no
+// cambio, se reusa sin volver a bajarlo. La version del usuario SI puede haber
+// cambiado, asi que el filtrado se recalcula siempre sobre los bloques
+// guardados.
+async function novedades(versionActual, previo) {
+  const etagPrevio = previo && previo.etag;
+  const r = await pedirTexto(CHANGELOG, etagPrevio);
+  if (!r) return null;
+
+  if (r.sinCambios && previo && Array.isArray(previo.bloques)) {
+    return armarNovedades(previo.bloques, versionActual, etagPrevio);
+  }
+
+  const md = r.texto;
   if (!md) return null;
 
   const bloques = [];
@@ -72,7 +90,10 @@ async function novedades(versionActual) {
     if (it) actual.entradas.push(it[1].trim());
   }
   if (!bloques.length) return null;
+  return armarNovedades(bloques, versionActual, r.etag);
+}
 
+function armarNovedades(bloques, versionActual, etag) {
   const nuevas = versionActual
     ? bloques.filter((b) => masNueva(b.version, versionActual))
     : bloques.slice(0, 1);
@@ -90,6 +111,9 @@ async function novedades(versionActual) {
         return nuevoA - nuevoB;
       })
       .slice(0, 6),
+    // Lo que hace falta para no volver a bajar el changelog la proxima vez.
+    etag: etag || null,
+    bloques,
   };
 }
 
@@ -304,7 +328,7 @@ function archivo(userDataDir) { return path.join(userDataDir, 'repaso.json'); }
 
 function hoy() { return new Date().toISOString().slice(0, 10); }
 
-async function generar(snap, userDataDir, boardsDir) {
+async function generar(snap, userDataDir, boardsDir, previo) {
   const items = [];
   items.push(...consejosDeUso(snap));
   items.push(...consejosDeSetup(snap));
@@ -312,7 +336,9 @@ async function generar(snap, userDataDir, boardsDir) {
 
   const versionActual = (snap.sessions || []).map((s) => s.version).filter(Boolean)[0] || null;
   let nov = null;
-  try { nov = await novedades(versionActual); } catch { /* sin internet, sin novedades */ }
+  try {
+    nov = await novedades(versionActual, previo && previo.novedades);
+  } catch { /* sin internet, sin novedades */ }
 
   const repaso = { fecha: hoy(), generadoMs: Date.now(), items, novedades: nov };
   try { fs.writeFileSync(archivo(userDataDir), JSON.stringify(repaso, null, 2)); }
@@ -322,11 +348,13 @@ async function generar(snap, userDataDir, boardsDir) {
 
 // Se genera una vez por dia. `forzar` es para el boton de actualizar.
 async function obtener(snap, userDataDir, boardsDir, forzar) {
-  if (!forzar) {
-    const guardado = readJSON(archivo(userDataDir), null);
-    if (guardado && guardado.fecha === hoy()) return { ...guardado, deCache: true };
+  const guardado = readJSON(archivo(userDataDir), null);
+  if (!forzar && guardado && guardado.fecha === hoy()) {
+    return { ...guardado, deCache: true };
   }
-  return generar(snap, userDataDir, boardsDir);
+  // Aunque toque regenerar, el ETag del changelog guardado sirve para no
+  // volver a bajar 588 KB si no cambio nada.
+  return generar(snap, userDataDir, boardsDir, guardado);
 }
 
 module.exports = { obtener, generar, novedades, version, masNueva, consejosDeUso, consejosDeSetup };

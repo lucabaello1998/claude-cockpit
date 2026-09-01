@@ -5,7 +5,7 @@
 <p align="center">
   <img alt="Electron" src="https://img.shields.io/badge/Electron-44-2b2b28?style=flat-square&labelColor=1a1a18">
   <img alt="React" src="https://img.shields.io/badge/React-19-2b2b28?style=flat-square&labelColor=1a1a18">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-280%20passing-3d7a3d?style=flat-square&labelColor=1a1a18">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-287%20passing-3d7a3d?style=flat-square&labelColor=1a1a18">
   <img alt="Sin telemetría" src="https://img.shields.io/badge/telemetr%C3%ADa-ninguna-d97757?style=flat-square&labelColor=1a1a18">
   <img alt="Windows" src="https://img.shields.io/badge/Windows-instalador-2b2b28?style=flat-square&labelColor=1a1a18">
 </p>
@@ -151,7 +151,7 @@ que el modelo de seguridad no es un detalle:
 npm run audit
 ```
 
-280 pruebas. No son tests de humo: **intentan explotar cada superficie de
+287 pruebas. No son tests de humo: **intentan explotar cada superficie de
 escritura** (traversal, symlinks, inyección de comandos, contaminación de
 prototipo, índices negativos) y verifican que quede contenido. La suite creció
 a partir de agujeros reales que se encontraron y se corrigieron.
