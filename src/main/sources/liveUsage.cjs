@@ -97,7 +97,11 @@ function request(token) {
           Accept: 'application/json',
           'User-Agent': 'claude-cockpit/1.0',
         },
-        timeout: 10000,
+        // Medido: normalmente responde en ~350 ms con 1.7 KB, pero la primera
+        // consulta despues de un rato inactivo tardo 11.4 s. Con 10 s eso se
+        // convertia en un error visible por nada: la respuesta es chica, y
+        // esperar unos segundos de mas es mejor que fallar y hacerte reintentar.
+        timeout: 25000,
       },
       (res) => {
         let body = '';
@@ -110,7 +114,7 @@ function request(token) {
     );
     req.on('timeout', () => {
       req.destroy();
-      reject(new UsageError('timeout', 'La consulta tardo mas de 10 segundos.'));
+      reject(new UsageError('timeout', 'Anthropic no respondió en 25 segundos. Probá de nuevo.'));
     });
     req.on('error', (e) =>
       reject(new UsageError('network', 'No se pudo llegar a la API: ' + e.message))

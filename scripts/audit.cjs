@@ -1153,6 +1153,16 @@ console.log('\n-- ronda 15: red --');
   const up = fs.readFileSync(B + 'src/main/updater.cjs', 'utf8');
   esperar('el updater no queda en bucle', !/setInterval/.test(up));
 
+  // El timeout de la consulta de uso no puede ser tan corto que falle sola.
+  // Medido: normalmente 350 ms / 1.7 KB, pero una consulta en frio tardo 11.4 s
+  // y con 10 s de tope eso era un error visible por nada.
+  const lu = fs.readFileSync(B + 'src/main/sources/liveUsage.cjs', 'utf8');
+  const to = /timeout: (\d+),/.exec(lu);
+  esperar('el timeout de uso deja margen para una consulta en frio',
+    to && Number(to[1]) >= 20000, to ? to[1] + ' ms' : 'no encontrado');
+  esperar('el mensaje de timeout dice los segundos reales',
+    !/mas de 10 segundos/.test(lu));
+
   // Cada host tiene que estar fijo en el codigo, no armado desde una entrada.
   const hosts = new Set();
   for (const f of ['ado.cjs', 'briefing.cjs', 'updater.cjs', 'mcpRegistry.cjs',
