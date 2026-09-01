@@ -119,6 +119,79 @@ function Editor({ proyecto, memoria, onCerrar, onGuardado, flash }) {
   );
 }
 
+// La skill `cockpit-memory` deja pedir este contexto desde CUALQUIER sesion de
+// Claude Code, sin tener Cockpit abierto. Cockpit mantiene el catalogo; la
+// skill solo sabe leerlo.
+function Skill({ total, flash }) {
+  const [est, setEst] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const cargar = useCallback(() => {
+    window.cockpit.skillStatus().then(setEst).catch(() => setEst(null));
+  }, []);
+  useEffect(() => { cargar(); }, [cargar]);
+
+  if (!est) return null;
+
+  const accion = async (fn, msg) => {
+    setBusy(true);
+    try { await fn(); flash(msg); cargar(); }
+    catch (e) { flash(String(e.message || e).replace(/^Error:\s*/, ''), true); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="card" style={{ borderLeft: '3px solid var(--blue)' }}>
+      <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <b style={{ fontSize: 13 }}>Traer este contexto desde cualquier sesión</b>
+          <div className="dim" style={{ fontSize: 11.5, marginTop: 4, lineHeight: 1.6 }}>
+            {est.instalada ? (
+              <>
+                Escribí <code>/{est.nombre}</code> en cualquier sesión de Claude Code y te
+                muestra la lista para elegir qué traer. El catálogo ({total} memorias) se
+                actualiza solo cada vez que Cockpit reindexa.
+              </>
+            ) : (
+              <>
+                Se instala una skill en <code>~/.claude/skills/{est.nombre}</code>. Después,
+                escribiendo <code>/{est.nombre}</code> en cualquier sesión podés traer estas
+                memorias sin tener Cockpit abierto.
+              </>
+            )}
+          </div>
+          <div className="dim" style={{ fontSize: 10.5, marginTop: 6, lineHeight: 1.55 }}>
+            Los grafos de código no se traen enteros: tienen decenas de miles de nodos. Lo
+            que viaja es el puntero — que existen, de qué commit son, y con qué
+            herramientas se consultan.
+          </div>
+        </div>
+        <div className="row" style={{ gap: 6 }}>
+          {busy && <span className="spin" />}
+          {est.instalada ? (
+            <>
+              <button className="btn sm" onClick={() => window.cockpit.openPath(est.dir)}>Ver</button>
+              <button
+                className="btn sm"
+                onClick={() => accion(() => window.cockpit.skillUninstall(), 'Skill quitada')}
+              >
+                Quitar
+              </button>
+            </>
+          ) : (
+            <button
+              className="btn sm primary"
+              onClick={() => accion(() => window.cockpit.skillInstall(), 'Skill instalada')}
+            >
+              Instalar
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Contexto({ flash }) {
   const [lista, setLista] = useState(null);
   const [editando, setEditando] = useState(null);
@@ -133,6 +206,7 @@ export default function Contexto({ flash }) {
   if (!lista) return <div className="card dim">Revisando…</div>;
 
   const vacios = lista.filter((p) => p.vacio).length;
+  const totalMem = lista.reduce((a, p) => a + p.memorias.length, 0);
 
   return (
     <div className="grid" style={{ gap: 12 }}>
@@ -146,6 +220,8 @@ export default function Contexto({ flash }) {
           </b>: una sesión nueva ahí arranca en blanco.</>
         )}
       </div>
+
+      <Skill total={totalMem} flash={flash} />
 
       {lista.map((p) => (
         <div

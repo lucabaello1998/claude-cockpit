@@ -1234,6 +1234,54 @@ console.log('\n-- ronda 16: contexto --');
   esperar('pide el porque, que es lo que se pierde al compactar', /por qu[eé]/i.test(pr));
 }
 console.log();
+
+// ---------------------------------------------------------------------------
+// Ronda 17: catalogo y skill para traer contexto a cualquier sesion.
+// ---------------------------------------------------------------------------
+console.log('\n-- ronda 17: catalogo --');
+await (async () => {
+  const ctx = require(B + 'src/main/contexto.cjs');
+  const src = fs.readFileSync(B + 'src/main/contexto.cjs', 'utf8');
+
+  const k = await ctx.catalogo();
+  esperar('el catalogo lista memorias', Array.isArray(k.memorias));
+  esperar('y los grafos por separado', Array.isArray(k.grafos));
+
+  // Lo importante: un grafo NO se trae, se apunta. Meter 30k nodos en contexto
+  // no entra y no sirve.
+  for (const g of k.grafos) {
+    esperar('el grafo "' + g.nombre + '" viaja como puntero, sin contenido',
+      !('nodosDetalle' in g) && !('graph' in g) && Array.isArray(g.herramientas));
+    esperar('y dice con que herramientas se consulta', g.herramientas.length > 0);
+  }
+  const tam = JSON.stringify(k).length;
+  esperar('el catalogo entero entra en pocos KB', tam < 200000, Math.round(tam / 1024) + ' KB');
+
+  // Cada memoria tiene que traer la ruta real: sin eso la skill no puede leerla.
+  for (const m of k.memorias.slice(0, 5)) {
+    esperar('la memoria "' + m.nombre + '" trae ruta y descripcion',
+      !!m.archivo && !!m.descripcion);
+  }
+
+  // La skill se escribe en el formato que Claude Code reconoce.
+  const t = src.indexOf('name: ' + "'" + ' + NOMBRE_SKILL');
+  esperar('la skill declara name y description en el frontmatter',
+    /'name: ' \+ NOMBRE_SKILL/.test(src) && /'description: /.test(src));
+  void t;
+  esperar('la skill le prohibe leer los grafos enteros',
+    /NO intentes leerlos/.test(src));
+  esperar('y avisa si el indice quedo viejo', /desactualizado. es true/.test(src));
+
+  // Instalar es una accion tuya; el catalogo despues se mantiene solo, pero
+  // solo si ya existe. Crearla sin pedirla seria escribir en la config ajena.
+  const main = fs.readFileSync(B + 'electron/main.cjs', 'utf8');
+  esperar('el catalogo se refresca solo SOLO si la skill ya esta instalada',
+    /if \(contexto\.skillInstalada\(\)\)/.test(main));
+
+  esperar('la skill vive dentro de ~/.claude/skills',
+    ctx.rutaSkill().indexOf(path.join('.claude', 'skills')) >= 0, ctx.rutaSkill());
+})();
+console.log();
 console.log();
 console.log('='.repeat(60));
 console.log(`  ${pasa} pasan · ${falla} fallan`);

@@ -128,6 +128,13 @@ function scheduleRefresh(reason) {
   refreshTimer = setTimeout(async () => {
     try {
       const r = await store.refresh();
+      // Si instalaste la skill, su catálogo se mantiene solo. Solo si ya
+      // existe: crearla sin que la pidas sería escribir en tu configuración
+      // por la nuestra.
+      if (contexto.skillInstalada()) {
+        try { await contexto.instalarSkill(); }
+        catch { /* si falla, el catálogo queda viejo y la skill lo dice */ }
+      }
       send('cockpit:updated', { reason, ...r, at: Date.now() });
     } catch (e) {
       send('cockpit:error', { where: 'refresh', message: String(e && e.message || e) });
@@ -385,6 +392,14 @@ handle('adoConnection', () => require('../src/main/ado.cjs').conexion());
 handle('reqStatus', () => requisitos.estado());
 handle('installState', () => instalacion.estado());
 handle('contextByProject', () => contexto.porProyecto());
+handle('contextCatalog', () => contexto.catalogo());
+handle('skillStatus', () => ({
+  instalada: contexto.skillInstalada(),
+  nombre: contexto.NOMBRE_SKILL,
+  dir: contexto.rutaSkill(),
+}));
+handle('skillInstall', () => contexto.instalarSkill());
+handle('skillUninstall', () => contexto.desinstalarSkill());
 handle('memoryRead', (proj, file) => contexto.leerMemoria(proj, file));
 handle('memorySave', async (proj, datos) => {
   const r = contexto.guardarMemoria(proj, datos);

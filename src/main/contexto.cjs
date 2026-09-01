@@ -313,7 +313,163 @@ function paqueteContexto(sesion, elegidos) {
   return l.join('\n');
 }
 
+// --- catalogo para traer contexto a cualquier sesion -------------------------
+//
+// Lo que se puede "traer" no es todo igual, y confundirlo seria caro:
+//
+//   - Las memorias son .md de unos KB: se traen ENTERAS.
+//   - Un grafo de codigo tiene decenas de miles de nodos. Meterlo en contexto
+//     es absurdo; lo que se trae es el PUNTERO: que existe, de que commit es, y
+//     con que herramientas se consulta. Son ~50 tokens en vez de megabytes.
+//
+// El catalogo lo mantiene Cockpit y lo lee la skill `cockpit-memory`, que se
+// instala en ~/.claude/skills. Asi cualquier sesion de Claude Code puede pedir
+// contexto sin que Cockpit tenga que estar abierto.
+
+const NOMBRE_SKILL = 'cockpit-memory';
+
+async function catalogo() {
+  const proyectos = await porProyecto();
+  const m = await memoria.readAll();
+
+  const memorias = [];
+  for (const p of proyectos) {
+    for (const e of p.memorias) {
+      memorias.push({
+        id: p.projectDir + '/' + e.file,
+        proyecto: p.nombre,
+        projectDir: p.projectDir,
+        archivo: path.join(p.dir, e.file),
+        nombre: e.name,
+        descripcion: e.description,
+        tipo: e.type || 'project',
+        bytes: e.bytes,
+      });
+    }
+    if (p.claudeMd) {
+      memorias.push({
+        id: p.projectDir + '/CLAUDE.md',
+        proyecto: p.nombre,
+        projectDir: p.projectDir,
+        archivo: p.claudeMd.path,
+        nombre: 'CLAUDE.md',
+        descripcion: 'Instrucciones del proyecto ' + p.nombre,
+        tipo: 'reference',
+        bytes: p.claudeMd.bytes,
+      });
+    }
+  }
+
+  // Los grafos NO se traen: se anuncian.
+  const grafos = [];
+  for (const prov of m.providers || []) {
+    for (const st of prov.stores || []) {
+      grafos.push({
+        id: prov.id + '/' + st.name,
+        proveedor: prov.id,
+        etiqueta: prov.label,
+        repo: st.root || st.dir || null,
+        nombre: st.name,
+        nodos: st.nodes || null,
+        aristas: st.edges || null,
+        indexadoEn: st.indexedAt || null,
+        commitIndexado: st.indexedCommit || null,
+        desactualizado: !!st.stale,
+        // Con que se consulta. Sin esto el puntero no sirve de nada.
+        herramientas: prov.id === 'codebase-memory'
+          ? ['mcp__codebase-memory-mcp__search_graph', 'mcp__codebase-memory-mcp__trace_path',
+            'mcp__codebase-memory-mcp__get_architecture', 'mcp__codebase-memory-mcp__get_code_snippet']
+          : [],
+      });
+    }
+  }
+
+  return {
+    generadoEn: new Date().toISOString(),
+    memorias: memorias.sort((a, b) => a.proyecto.localeCompare(b.proyecto)),
+    grafos,
+  };
+}
+
+// La skill es fina a proposito: solo sabe leer el catalogo. Toda la logica de
+// que hay disponible vive en Cockpit, que es quien mira el disco.
+function textoSkill(rutaCatalogo) {
+  return [
+    '---',
+    'name: ' + NOMBRE_SKILL,
+    'description: Traer a esta sesion contexto guardado de otros proyectos o sesiones anteriores: memorias de Claude Code, CLAUDE.md de otros repos, y los grafos de codigo indexados. Usar cuando el usuario pida traer contexto, recordar lo de otro proyecto, seguir algo de otra sesion, o escriba /cockpit-memory.',
+    '---',
+    '',
+    '# Traer contexto guardado',
+    '',
+    'El catalogo lo mantiene Claude Cockpit y esta en:',
+    '',
+    '    ' + rutaCatalogo,
+    '',
+    '## Que hacer',
+    '',
+    '1. Lee ese JSON. Tiene dos listas: `memorias` y `grafos`.',
+    '',
+    '2. Mostrale al usuario lo que hay, agrupado por proyecto, en una tabla corta:',
+    '   nombre, proyecto y descripcion. No vuelques el JSON crudo.',
+    '',
+    '3. Preguntale cual quiere traer. Si te lo dijo en el pedido ("trae lo de',
+    '   FletAR"), filtra vos y no preguntes de gusto.',
+    '',
+    '4. Segun que eligio:',
+    '',
+    '   - **Memorias**: leelas con Read desde el campo `archivo` y resumilas en',
+    '     esta conversacion. Son archivos chicos.',
+    '',
+    '   - **Grafos**: NO intentes leerlos. Tienen decenas de miles de nodos y no',
+    '     entran en contexto. Lo unico que hay que hacer es avisar que existen y',
+    '     usar las herramientas de `herramientas` cuando haga falta consultarlos.',
+    '     Si `desactualizado` es true, decilo: el indice es de un commit viejo.',
+    '',
+    '## Lo que no hay que hacer',
+    '',
+    '- No copies una memoria a este proyecto sin que te lo pidan. Traerla a la',
+    '  conversacion no es lo mismo que duplicarla en disco.',
+    '- Si el catalogo no existe o esta viejo, decilo en vez de inventar: se',
+    '  regenera abriendo Claude Cockpit.',
+    '',
+  ].join('\n');
+}
+
+function rutaSkill() {
+  return path.join(P.skills, NOMBRE_SKILL);
+}
+
+// Escribe (o actualiza) la skill y su catalogo. Es idempotente: se puede
+// llamar en cada refresh sin ensuciar nada.
+async function instalarSkill() {
+  const dir = rutaSkill();
+  if (!seguro.dentroDe(P.skills, dir)) throw new Error('Ruta de skill inválida.');
+  fs.mkdirSync(dir, { recursive: true });
+  const cat = path.join(dir, 'catalogo.json');
+  fs.writeFileSync(cat, JSON.stringify(await catalogo(), null, 2));
+  fs.writeFileSync(path.join(dir, 'SKILL.md'), textoSkill(cat));
+  return { dir, catalogo: cat };
+}
+
+function skillInstalada() {
+  return !!statSafe(path.join(rutaSkill(), 'SKILL.md'));
+}
+
+function desinstalarSkill() {
+  const dir = rutaSkill();
+  if (!seguro.dentroDe(P.skills, dir)) throw new Error('Ruta de skill inválida.');
+  if (!statSafe(dir)) return { ok: true };
+  for (const f of ['SKILL.md', 'catalogo.json']) {
+    const x = path.join(dir, f);
+    if (statSafe(x)) fs.unlinkSync(x);
+  }
+  try { fs.rmdirSync(dir); } catch { /* quedo algo adentro: se deja */ }
+  return { ok: true };
+}
+
 module.exports = {
+  catalogo, instalarSkill, skillInstalada, desinstalarSkill, NOMBRE_SKILL, rutaSkill,
   porProyecto, leerMemoria, guardarMemoria, borrarMemoria, actualizarIndice,
   candidatos, paqueteContexto, armarMemoria, prepararPrompt,
 };
