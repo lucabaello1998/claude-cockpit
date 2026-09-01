@@ -1178,6 +1178,62 @@ console.log('\n-- ronda 15: red --');
     inesperados.join(', '));
 }
 console.log();
+
+// ---------------------------------------------------------------------------
+// Ronda 16: contexto que sobrevive entre sesiones.
+// ---------------------------------------------------------------------------
+console.log('\n-- ronda 16: contexto --');
+{
+  const ctx = require(B + 'src/main/contexto.cjs');
+  const src = fs.readFileSync(B + 'src/main/contexto.cjs', 'utf8');
+
+  // El formato tiene que ser EXACTAMENTE el que lee Claude Code. Si se inventa
+  // uno propio, las memorias existen pero nadie las carga.
+  const m = ctx.armarMemoria({ name: 'Una Regla', description: 'que hace', type: 'feedback', body: 'cuerpo' });
+  esperar('el nombre se normaliza a kebab', m.nombre === 'una-regla', m.nombre);
+  esperar('el frontmatter tiene name, description y type',
+    /^---\nname: una-regla\ndescription: "que hace"\nmetadata:\n[\s\S]*type: feedback/.test(m.texto));
+  esperar('un tipo desconocido cae en project',
+    /type: project/.test(ctx.armarMemoria({ name: 'x', description: 'y', type: 'inventado' }).texto));
+  rechaza('sin nombre se rechaza', () => ctx.armarMemoria({ description: 'y' }));
+  rechaza('sin descripcion se rechaza, que es lo que la hace encontrable',
+    () => ctx.armarMemoria({ name: 'x' }));
+
+  // Escribir memorias toca ~/.claude: no puede salirse de ahi.
+  const tmp = '__audit-contexto__';
+  const dirProy = path.join(P.projects, tmp);
+  fs.rmSync(dirProy, { recursive: true, force: true });
+  try {
+    const r = ctx.guardarMemoria(tmp, { name: 'Prueba', description: 'desc', type: 'project', body: 'b' });
+    esperar('la memoria se escribe donde Claude Code la busca',
+      fs.existsSync(r.path) && r.path.indexOf(path.join(tmp, 'memory')) >= 0);
+    const idx = fs.readFileSync(path.join(dirProy, 'memory', 'MEMORY.md'), 'utf8');
+    esperar('MEMORY.md queda con la linea del indice', /\[Prueba\]\(prueba\.md\) — desc/.test(idx), idx.trim());
+    ctx.borrarMemoria(tmp, r.file);
+    esperar('al borrar, el indice se limpia',
+      fs.readFileSync(path.join(dirProy, 'memory', 'MEMORY.md'), 'utf8').trim() === '');
+  } finally {
+    fs.rmSync(dirProy, { recursive: true, force: true });
+  }
+
+  for (const malo of ['../../escape', '..', 'C:/otro', 'a/b']) {
+    rechaza('proyecto que intenta escapar rechazado: ' + malo,
+      () => ctx.guardarMemoria(malo, { name: 'x', description: 'y' }));
+  }
+
+  // El extractor es heuristico y hay que decirlo, no venderlo como magia.
+  esperar('el codigo avisa que el extractor es debil',
+    /no como "esto hay que guardar"|matchea palabras, no importancia/i.test(src));
+  esperar('los candidatos se deduplican', /vistos\.has\(clave\)/.test(src));
+
+  // El prompt tiene que llevar la ruta del transcript y la carpeta destino: sin
+  // eso Claude Code no sabe que leer ni donde escribir.
+  const pr = ctx.prepararPrompt({ file: 'C:/x/y.jsonl' }, 'mi-proyecto');
+  esperar('el prompt dice que transcript leer', pr.indexOf('C:/x/y.jsonl') >= 0);
+  esperar('y en que carpeta escribir', pr.indexOf('mi-proyecto') >= 0 && pr.indexOf('memory') >= 0);
+  esperar('pide el porque, que es lo que se pierde al compactar', /por qu[eé]/i.test(pr));
+}
+console.log();
 console.log();
 console.log('='.repeat(60));
 console.log(`  ${pasa} pasan · ${falla} fallan`);

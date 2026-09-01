@@ -20,6 +20,7 @@ const requisitos = require('../src/main/requisitos.cjs');
 const briefing = require('../src/main/briefing.cjs');
 const updater = require('../src/main/updater.cjs');
 const instalacion = require('../src/main/instalacion.cjs');
+const contexto = require('../src/main/contexto.cjs');
 const workflowsEdit = require('../src/main/workflowsEdit.cjs');
 const workflowTemplates = require('../src/main/workflowTemplates.cjs');
 const mcpClient = require('../src/main/mcpClient.cjs');
@@ -383,6 +384,20 @@ handle('boardImport', (remoto, nombre) => boards.importarComoLocal(dirBoards(), 
 handle('adoConnection', () => require('../src/main/ado.cjs').conexion());
 handle('reqStatus', () => requisitos.estado());
 handle('installState', () => instalacion.estado());
+handle('contextByProject', () => contexto.porProyecto());
+handle('memoryRead', (proj, file) => contexto.leerMemoria(proj, file));
+handle('memorySave', async (proj, datos) => {
+  const r = contexto.guardarMemoria(proj, datos);
+  await store.refresh();
+  return r;
+});
+handle('memoryDelete', async (proj, file) => {
+  const r = contexto.borrarMemoria(proj, file);
+  await store.refresh();
+  return r;
+});
+handle('contextCandidates', (file) => contexto.candidatos(file));
+handle('contextPrompt', (sesion, proj) => contexto.prepararPrompt(sesion, proj));
 handle('updaterState', () => updater.publico());
 handle('updaterCheck', () => updater.buscar());
 handle('updaterDownload', () => updater.descargar());

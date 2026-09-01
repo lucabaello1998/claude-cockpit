@@ -4,6 +4,7 @@ import {
 } from '../util.js';
 import { esOutcome, esHelpfulness, esSessionType, esFriction } from '../i18n.js';
 import { useMoney } from '../money.js';
+import RescatarContexto from './RescatarContexto.jsx';
 
 const OUTCOME_CHIP = {
   achieved: 'on', mostly_achieved: 'on',
@@ -291,6 +292,8 @@ export default function Conversations({ snap, flash }) {
   const [showAgents, setShowAgents] = useState(false);
   const [vista, setVista] = useState('charla');
   const [archived, setArchived] = useState([]);
+  // La sesión cuyo contexto se está por rescatar antes de que se pierda.
+  const [contexto, setContexto] = useState(null);
   const [verArchivadas, setVerArchivadas] = useState(false);
   const [agente, setAgente] = useState(null);
   const scrollRef = useRef(null);
@@ -525,6 +528,13 @@ export default function Conversations({ snap, flash }) {
                   {thread.session.title}
                 </b>
                 <div className="row" style={{ gap: 6 }}>
+                  <button
+                    className="btn sm primary"
+                    onClick={() => setContexto(thread.session)}
+                    title="Preparar lo aprendido acá para que no se pierda"
+                  >
+                    Guardar contexto
+                  </button>
                   <button className="btn sm" onClick={(e) => toggleArchivo(e, thread.session.sessionId)}>
                     {archivedSet.has(thread.session.sessionId) ? 'Desarchivar' : 'Archivar'}
                   </button>
@@ -676,6 +686,14 @@ export default function Conversations({ snap, flash }) {
           </>
         )}
       </div>
+
+      {contexto && (
+        <RescatarContexto
+          sesion={contexto}
+          onCerrar={() => setContexto(null)}
+          flash={flash}
+        />
+      )}
     </div>
   );
 }

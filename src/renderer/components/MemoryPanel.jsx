@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import GraphExplorer from './GraphExplorer.jsx';
 import { fmtInt, fmtBytes, fmtAgo, basename } from '../util.js';
+import Contexto from './Contexto.jsx';
 
 const TYPE_CHIP = {
   user: 'info', feedback: 'warn', project: 'on', reference: 'alt',
@@ -173,6 +174,9 @@ function CodebaseCard({ e, onExplore }) {
 }
 
 export default function MemoryPanel({ memory, flash }) {
+  // Dos cosas distintas viven aca: lo que Claude Code CARGA solo en cada sesion
+  // (contexto) y los grafos de codigo indexados. Mezclarlas confundia.
+  const [vista, setVista] = useState('contexto');
   const [openStore, setOpenStore] = useState(null);
   const [exploring, setExploring] = useState(null);
   const [indexed, setIndexed] = useState(null);
@@ -224,8 +228,36 @@ export default function MemoryPanel({ memory, flash }) {
 
   const totalMemories = memory.claudeMemory.reduce((a, s) => a + s.entries.length, 0);
 
+  const selector = (
+    <div className="row" style={{ gap: 6, marginBottom: 4 }}>
+      <button
+        className={'btn sm' + (vista === 'contexto' ? ' primary' : '')}
+        onClick={() => setVista('contexto')}
+        title="Lo que Claude Code carga solo al abrir una sesión"
+      >
+        Qué recuerda Claude
+      </button>
+      <button
+        className={'btn sm' + (vista === 'grafos' ? ' primary' : '')}
+        onClick={() => setVista('grafos')}
+      >
+        Grafos de código
+      </button>
+    </div>
+  );
+
+  if (vista === 'contexto') {
+    return (
+      <div className="grid" style={{ gap: 12 }}>
+        {selector}
+        <Contexto flash={flash} />
+      </div>
+    );
+  }
+
   return (
     <div className="grid" style={{ gap: 14 }}>
+      {selector}
       {/* Codebase Memory: una sola lista, cruzando el indice del servidor con
           los artifacts exportados en cada repo */}
       <div>
