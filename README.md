@@ -10,6 +10,14 @@
   <img alt="Windows" src="https://img.shields.io/badge/Windows-instalador-2b2b28?style=flat-square&labelColor=1a1a18">
 </p>
 
+<p align="center">
+  <b>Español</b> · <a href="README.en.md">English</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/lucabaello1998/claude-cockpit/releases/latest"><b>⬇ Descargar el instalador</b></a>
+</p>
+
 ---
 
 Claude Code te deja un montón de información en el disco: cada conversación, el
@@ -20,7 +28,17 @@ los hooks. Pero no tenés forma de mirarla.
 servidor, no manda telemetría, y no escribe nada en tu configuración sin que lo
 confirmes.
 
-## Empezar
+## Instalar
+
+Bajá el instalador desde
+[Releases](https://github.com/lucabaello1998/claude-cockpit/releases/latest) y
+ejecutalo. No hace falta Node ni correr nada.
+
+> Windows te va a mostrar un aviso de SmartScreen: el instalador no está firmado
+> (el certificado es pago). *Más información → Ejecutar de todas formas*, o
+> compilalo vos con los pasos de abajo.
+
+### Desde el código
 
 ```bash
 npm install
