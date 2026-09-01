@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="430" viewBox="0 0 1000 430" role="img" aria-label="Arquitectura de Claude Cockpit">
+  <!-- Todo el estilo va como atributo de presentacion, no en una hoja aparte:
+       GitHub sanea los SVG del README y podria descartarla. -->
+  <defs>
+    <marker id="flecha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#6b675f"/>
+    </marker>
+  </defs>
+
+  <rect width="1000" height="430" rx="10" fill="#0f0f0e"/>
+
+  <g font-family="Segoe UI, Inter, system-ui, sans-serif">
+
+    <!-- ============ disco ============ -->
+    <text x="30" y="34" font-size="10.5" fill="#6b675f" letter-spacing="0.6">TU DISCO</text>
+    <rect x="30" y="46" width="250" height="250" rx="9" fill="#1a1a18" stroke="#2c2c29"/>
+
+    <text x="50" y="76" font-size="13" font-weight="700" fill="#ece9e3">~/.claude</text>
+    <text x="50" y="100" font-size="10.5" fill="#6b675f" font-family="Consolas, ui-monospace, monospace">projects/**/*.jsonl</text>
+    <text x="50" y="117" font-size="11" fill="#918c81">conversaciones y usage</text>
+    <text x="50" y="142" font-size="10.5" fill="#6b675f" font-family="Consolas, ui-monospace, monospace">projects/**/subagents/</text>
+    <text x="50" y="159" font-size="11" fill="#918c81">gasto de los subagentes</text>
+    <text x="50" y="184" font-size="10.5" fill="#6b675f" font-family="Consolas, ui-monospace, monospace">settings.json · .mcp.json</text>
+    <text x="50" y="201" font-size="11" fill="#918c81">hooks, MCP, skills</text>
+    <text x="50" y="226" font-size="10.5" fill="#6b675f" font-family="Consolas, ui-monospace, monospace">usage-data/</text>
+    <text x="50" y="243" font-size="11" fill="#918c81">métricas por sesión</text>
+    <text x="50" y="272" font-size="11" fill="#918c81">Solo lectura. Nunca escribe sin</text>
+    <text x="50" y="288" font-size="11" fill="#918c81">que lo confirmes.</text>
+
+    <!-- ============ main ============ -->
+    <text x="350" y="34" font-size="10.5" fill="#6b675f" letter-spacing="0.6">PROCESO PRINCIPAL (NODE)</text>
+    <rect x="350" y="46" width="290" height="250" rx="9" fill="#1a1a18" stroke="#d97757" stroke-opacity="0.45"/>
+
+    <text x="370" y="76" font-size="13" font-weight="700" fill="#ece9e3">Índice incremental</text>
+    <text x="370" y="96" font-size="11" fill="#918c81">Deduplica por requestId y retoma</text>
+    <text x="370" y="112" font-size="11" fill="#918c81">desde el último byte leído.</text>
+
+    <text x="370" y="146" font-size="13" font-weight="700" fill="#ece9e3">Precios y costos</text>
+    <text x="370" y="166" font-size="11" fill="#918c81">Se recalculan al construir, no al</text>
+    <text x="370" y="182" font-size="11" fill="#918c81">indexar: cambiarlos es instantáneo.</text>
+
+    <text x="370" y="216" font-size="13" font-weight="700" fill="#ece9e3">Contención de rutas</text>
+    <text x="370" y="236" font-size="11" fill="#918c81">Todo lo que viene de afuera pasa</text>
+    <text x="370" y="252" font-size="11" fill="#918c81">por safePaths antes de tocar disco.</text>
+
+    <text x="370" y="281" font-size="11" fill="#918c81">Sin backend. Sin base de datos.</text>
+
+    <!-- ============ renderer ============ -->
+    <text x="710" y="34" font-size="10.5" fill="#6b675f" letter-spacing="0.6">VENTANA (REACT)</text>
+    <rect x="710" y="46" width="260" height="250" rx="9" fill="#1a1a18" stroke="#2c2c29"/>
+
+    <g font-size="11" fill="#918c81">
+      <text x="730" y="76">Resumen · medidores y gasto</text>
+      <text x="730" y="102">Repaso · qué revisar hoy</text>
+      <text x="730" y="128">Tokens y costo · series</text>
+      <text x="730" y="154">Conversaciones · transcripts</text>
+      <text x="730" y="180">Memorias · grafos de código</text>
+      <text x="730" y="206">Boards · Azure DevOps y propios</text>
+      <text x="730" y="232">Configuración · MCP, skills,</text>
+      <text x="730" y="248">workflows, hooks, paquete</text>
+      <text x="730" y="281">contextIsolation · sin nodeIntegration</text>
+    </g>
+
+    <!-- flechas -->
+    <path d="M282 170 H346" stroke="#6b675f" stroke-width="1.5" marker-end="url(#flecha)"/>
+    <path d="M642 170 H706" stroke="#6b675f" stroke-width="1.5" marker-end="url(#flecha)"/>
+    <text x="296" y="162" font-size="10.5" fill="#6b675f" font-family="Consolas, ui-monospace, monospace">fs</text>
+    <text x="654" y="162" font-size="10.5" fill="#6b675f" font-family="Consolas, ui-monospace, monospace">IPC</text>
+
+    <!-- ============ salidas ============ -->
+    <text x="30" y="342" font-size="10.5" fill="#6b675f" letter-spacing="0.6">LO ÚNICO QUE SALE A INTERNET</text>
+    <rect x="30" y="354" width="940" height="58" rx="9" fill="#1a1a18" stroke="#2c2c29"/>
+
+    <text x="50" y="378" font-size="11.5" fill="#ece9e3">api.anthropic.com</text>
+    <text x="50" y="397" font-size="10.5" fill="#6b675f">solo al apretar «Actualizar uso»</text>
+
+    <text x="290" y="378" font-size="11.5" fill="#ece9e3">dev.azure.com</text>
+    <text x="290" y="397" font-size="10.5" fill="#6b675f">solo si configurás Boards</text>
+
+    <text x="530" y="378" font-size="11.5" fill="#ece9e3">raw.githubusercontent.com</text>
+    <text x="530" y="397" font-size="10.5" fill="#6b675f">changelog de Claude Code</text>
+
+    <text x="790" y="378" font-size="11.5" fill="#ece9e3">platform.claude.com</text>
+    <text x="790" y="397" font-size="10.5" fill="#6b675f">tabla de precios</text>
+  </g>
+</svg>

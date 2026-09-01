@@ -1,0 +1,16 @@
+node_modules/
+
+# Salida de vite (el bundle) y del empaquetador. Se regeneran con
+# `npm run build` y `npm run dist`; el instalador pesa 111 MB.
+dist/
+dist_electron/
+release/
+
+# Datos de la app, por si alguna vez se corre apuntando aca.
+.cache-test/
+repaso.json
+*.log
+
+# Sistema
+.DS_Store
+Thumbs.db

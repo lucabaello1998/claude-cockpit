@@ -1,0 +1,89 @@
+{
+  "name": "claude-cockpit",
+  "version": "1.0.0",
+  "description": "Dashboard de escritorio para tu instalación local de Claude Code: uso, costos, conversaciones, memorias, MCPs, workflows y boards.",
+  "main": "electron/main.cjs",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n VITE,ELECTRON -c cyan,magenta \"vite\" \"wait-on tcp:5173 && cross-env COCKPIT_DEV=1 node scripts/launch.cjs\"",
+    "build": "eslint . --max-warnings 99 && vite build",
+    "start": "vite build && node scripts/launch.cjs",
+    "dist": "node scripts/make-icon.cjs && vite build && electron-builder",
+    "app": "node scripts/launch.cjs",
+    "audit": "node scripts/audit.cjs",
+    "watch-usage": "node scripts/watch-usage.cjs",
+    "lint": "eslint .",
+    "icon": "node scripts/make-icon.cjs"
+  },
+  "dependencies": {
+    "chokidar": "^5.0.0",
+    "d3-force": "^3.0.0",
+    "electron-updater": "^6.8.9"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.1",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^44.0.0",
+    "electron-builder": "^26.15.3",
+    "eslint": "^10.9.1",
+    "globals": "^17.11.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "recharts": "^3.10.1",
+    "vite": "^8.2.2",
+    "wait-on": "^9.0.1"
+  },
+  "build": {
+    "appId": "com.lucabaello1998.claudecockpit",
+    "productName": "Claude Cockpit",
+    "files": [
+      "electron/**/*",
+      "src/main/**/*",
+      "dist/**/*",
+      "build/icon.png",
+      "package.json",
+      "scripts/**/*",
+      "!dist/win-unpacked",
+      "!dist/*.exe",
+      "!dist/*.blockmap"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
+    },
+    "directories": {
+      "output": "release"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "lucabaello1998",
+        "repo": "claude-cockpit"
+      }
+    ]
+  },
+  "author": "Luca Baello",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lucabaello1998/claude-cockpit"
+  },
+  "license": "UNLICENSED",
+  "keywords": [
+    "claude-code",
+    "electron",
+    "dashboard",
+    "mcp",
+    "azure-devops"
+  ],
+  "private": true
+}
