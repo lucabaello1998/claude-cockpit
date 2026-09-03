@@ -60,7 +60,8 @@
       "allowToChangeInstallationDirectory": true,
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/icon.ico"
+      "installerHeaderIcon": "build/icon.ico",
+      "artifactName": "Claude-Cockpit-Setup-${version}.${ext}"
     },
     "directories": {
       "output": "release"
