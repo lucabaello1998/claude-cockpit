@@ -119,8 +119,14 @@ export default function Actualizacion({ flash }) {
           {hay && !e.descargada && !e.descargando && (
             <button className="btn sm primary" onClick={descargar} disabled={busy}>Descargar</button>
           )}
-          {!hay && (
-            <button className="btn sm" onClick={buscar} disabled={busy || e.buscando}>Buscar</button>
+          {/* Siempre disponible, no solo cuando "no hay": una version que ya
+              detecto puede quedar con metadata vieja en cache (paso, en la
+              practica, mientras se corregia un release a medio publicar) y
+              sin esto la unica forma de refrescarla era reiniciar la app. */}
+          {!e.descargando && !e.descargada && (
+            <button className="btn sm" onClick={buscar} disabled={busy || e.buscando} title="Volver a buscar (por si la versión detectada quedó con datos viejos)">
+              Buscar
+            </button>
           )}
         </div>
       </div>
