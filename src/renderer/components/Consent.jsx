@@ -38,7 +38,7 @@ export default function Consent({ onAccept, flash }) {
             <span className="dot" style={{
               width: 11, height: 11, borderRadius: 3, background: 'var(--accent)', display: 'inline-block',
             }} />
-            <b style={{ fontSize: 15 }}>Lo opcional: qué podés conectar</b>
+            <b style={{ fontSize: 15 }}>Lo opcional: qué podés conectar e instalar</b>
           </div>
           <Requisitos flash={flash || (() => {})} compacto />
           <div className="row" style={{ gap: 8, marginTop: 16 }}>

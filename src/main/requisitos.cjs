@@ -1,6 +1,9 @@
 'use strict';
+const fs = require('fs');
+const path = require('path');
 const mcp = require('./mcpClient.cjs');
 const projectsEdit = require('./projectsEdit.cjs');
+const contexto = require('./contexto.cjs');
 
 // Que necesita la app para que cada cosa funcione.
 //
@@ -14,8 +17,34 @@ const projectsEdit = require('./projectsEdit.cjs');
 //
 // Cada requisito trae ademas una PRUEBA real. Documentar como configurarlo no
 // alcanza: lo unico que confirma que quedo bien es pedirle datos al servidor.
+//
+// Hay dos clases de requisito y conviene no confundirlas:
+//
+//   tipo 'mcp'    un servidor que Claude Code levanta para hablar con afuera.
+//   tipo 'skill'  un SKILL.md en ~/.claude/skills que le ensena a Claude Code a
+//                 usar algo que esta app deja en tu disco.
+//
+// Aviso para el que lea esto buscando "las skills que Claude necesita": no
+// existen. Claude Code anda sin ninguna skill instalada. Las de aca abajo son
+// las de COCKPIT: sin ellas la app sigue funcionando, pero lo que arma se queda
+// adentro de la app en vez de estar disponible en cualquier sesion.
 
 const REQUISITOS = [
+  {
+    id: 'skill-contexto',
+    tipo: 'skill',
+    titulo: 'Skill /' + contexto.NOMBRE_SKILL,
+    habilita: 'Traer memorias, CLAUDE.md y grafos de cualquier proyecto a la sesión en la que estés escribiendo /'
+      + contexto.NOMBRE_SKILL + ', e importar los paquetes de contexto que armás desde Contexto. Sin esto, todo eso solo se ve con Cockpit abierto.',
+    // Se instala de un clic: es un archivo en tu carpeta, no hay nada que pedirte.
+    instalable: true,
+    // No se instala sola en el arranque a proposito. El comentario de main.cjs
+    // vale igual aca: escribir en tu configuracion sin que lo pidas esta mal,
+    // aunque sea nuestro propio archivo. Lo que faltaba era OFRECERLO.
+    detectar: () => contexto.skillInstalada(),
+    instalar: () => contexto.instalarSkill(),
+    quitar: () => contexto.desinstalarSkill(),
+  },
   {
     id: 'ado',
     titulo: 'Azure DevOps',
@@ -137,9 +166,29 @@ function encontrado(req) {
 
 function estado() {
   return REQUISITOS.map((r) => {
+    if (r.tipo === 'skill') {
+      return {
+        id: r.id,
+        tipo: 'skill',
+        titulo: r.titulo,
+        habilita: r.habilita,
+        instalable: true,
+        detectado: !!r.detectar(),
+        paquete: null,
+        manual: null,
+        enlaces: null,
+        campos: null,
+        opciones: [],
+        servidor: null,
+        alcance: null,
+        definidoPor: null,
+      };
+    }
     const s = encontrado(r);
     return {
       id: r.id,
+      tipo: 'mcp',
+      instalable: false,
       titulo: r.titulo,
       habilita: r.habilita,
       paquete: r.paquete,
@@ -180,6 +229,14 @@ function tokenBasic(pat) {
 function configurar(userDataDir, id, valores, opcionId) {
   const req = REQUISITOS.find((r) => r.id === id);
   if (!req) throw new Error('Requisito desconocido.');
+
+  // Una skill no se configura: se instala. No hay campos ni token que pedir,
+  // asi que el mismo boton que en un MCP abre un formulario, aca ya termina.
+  if (req.tipo === 'skill') {
+    if (valores && valores.quitar) return req.quitar();
+    return req.instalar();
+  }
+
   if (req.manual) throw new Error('Este se instala a mano: ' + req.manual);
 
   const v = valores || {};
@@ -215,6 +272,31 @@ function configurar(userDataDir, id, valores, opcionId) {
 async function probar(id) {
   const req = REQUISITOS.find((r) => r.id === id);
   if (!req) throw new Error('Requisito desconocido.');
+
+  // Que el archivo exista no prueba nada: la skill sirve solo si su catalogo se
+  // puede leer y coincide con lo que hay en el disco hoy. Un catalogo viejo es
+  // el modo de falla real, porque la skill igual arranca y miente.
+  if (req.tipo === 'skill') {
+    if (!req.detectar()) throw new Error('Todavía no está instalada.');
+    const cat = path.join(contexto.rutaSkill(), 'catalogo.json');
+    let enDisco;
+    try { enDisco = JSON.parse(fs.readFileSync(cat, 'utf8')); }
+    catch { throw new Error('La skill está pero su catálogo no se puede leer. Instalala de nuevo.'); }
+    const guardadas = (enDisco.memorias || []).length;
+    const ahora = (await contexto.catalogo()).memorias.length;
+    if (guardadas !== ahora) {
+      return {
+        ok: true,
+        detalle: 'Anda, pero el catálogo quedó viejo: lista ' + guardadas + ' memorias y ahora hay '
+          + ahora + '. Se rearma solo la próxima vez que la app reindexe.',
+      };
+    }
+    return {
+      ok: true,
+      detalle: 'Anda: ' + guardadas + ' memorias y ' + (enDisco.grafos || []).length
+        + ' grafos disponibles desde cualquier sesión.',
+    };
+  }
 
   if (id === 'ado') {
     const ado = require('./ado.cjs');

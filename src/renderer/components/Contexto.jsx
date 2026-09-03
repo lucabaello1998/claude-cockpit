@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { fmtBytes, fmtAgo } from '../util.js';
+import LlevarContexto from './LlevarContexto.jsx';
 
 // Qué sabe Claude Code cuando arranca una sesión nueva en cada proyecto.
 //
@@ -195,6 +196,7 @@ function Skill({ total, flash }) {
 export default function Contexto({ flash }) {
   const [lista, setLista] = useState(null);
   const [editando, setEditando] = useState(null);
+  const [armando, setArmando] = useState(false);
 
   const cargar = useCallback(async () => {
     try { setLista(await window.cockpit.contextByProject()); }
@@ -222,6 +224,23 @@ export default function Contexto({ flash }) {
       </div>
 
       <Skill total={totalMem} flash={flash} />
+
+      {/* La skill trae contexto de acá; esto lo saca. Van juntos porque son la
+          misma pregunta desde los dos lados: qué sobrevive a esta sesión. */}
+      <div className="card row" style={{ gap: 10, alignItems: 'flex-start' }}>
+        <div style={{ flex: 1 }}>
+          <b style={{ fontSize: 13 }}>Llevarte contexto elegido</b>
+          <div className="dim" style={{ fontSize: 11.5, marginTop: 4, lineHeight: 1.6 }}>
+            Tildás qué memorias, qué CLAUDE.md y qué conversaciones querés, y sale una
+            carpeta que se importa desde cualquier sesión con <code>/cockpit-memory
+            importar</code>. Sirve para traer contexto viejo acá, o para llevártelo a otra
+            máquina.
+          </div>
+        </div>
+        <button className="btn sm primary" onClick={() => setArmando(true)}>Armar carpeta</button>
+      </div>
+
+      {armando && <LlevarContexto onCerrar={() => setArmando(false)} flash={flash} />}
 
       {lista.map((p) => (
         <div

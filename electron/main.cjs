@@ -21,6 +21,7 @@ const briefing = require('../src/main/briefing.cjs');
 const updater = require('../src/main/updater.cjs');
 const instalacion = require('../src/main/instalacion.cjs');
 const contexto = require('../src/main/contexto.cjs');
+const llevar = require('../src/main/llevarContexto.cjs');
 const workflowsEdit = require('../src/main/workflowsEdit.cjs');
 const workflowTemplates = require('../src/main/workflowTemplates.cjs');
 const mcpClient = require('../src/main/mcpClient.cjs');
@@ -400,6 +401,48 @@ handle('skillStatus', () => ({
 }));
 handle('skillInstall', () => contexto.instalarSkill());
 handle('skillUninstall', () => contexto.desinstalarSkill());
+
+// --- paquetes de contexto ----------------------------------------------------
+//
+// Las sesiones no salen del disco directo sino del snapshot del store, que ya
+// las tiene resumidas (titulo, turnos, totales). Pasarselas al modulo evita que
+// vuelva a parsear 300 MB de transcripts solo para llenar una lista.
+handle('ctxInventory', () => llevar.inventario((store.snapshot && store.snapshot.sessions) || []));
+
+// Se elige carpeta cada vez y NO se guarda en settings, a diferencia de
+// pickSyncDir: exportar a un pendrive una vez no deberia cambiarte la config.
+handle('ctxPickDir', async () => {
+  const r = await dialog.showOpenDialog(win, {
+    title: 'Dónde dejar el paquete',
+    properties: ['openDirectory', 'createDirectory'],
+  });
+  return (r.canceled || !r.filePaths.length) ? null : r.filePaths[0];
+});
+
+// Solo se pueden abrir las carpetas que esta app acaba de crear. El destino lo
+// elegis vos y puede estar en cualquier lado, asi que rutaPermitida() no
+// alcanza; lo que habilita abrirla es que la escribimos nosotros recien.
+const carpetasCreadas = new Set();
+
+handle('ctxExport', async (seleccion, opts) => {
+  const o = opts || {};
+  if (!o.destino) throw new Error('Falta elegir dónde dejar el paquete.');
+  const r = await llevar.exportar({
+    destino: o.destino,
+    seleccion,
+    autocontenido: !!o.autocontenido,
+    sesiones: (store.snapshot && store.snapshot.sessions) || [],
+    etiquetaMaquina: settings.get().machineLabel || null,
+  });
+  carpetasCreadas.add(r.dir);
+  return r;
+});
+
+handle('ctxReveal', (dir) => {
+  if (!carpetasCreadas.has(dir)) throw new Error('Esa carpeta no la generó esta sesión.');
+  shell.showItemInFolder(dir);
+  return true;
+});
 handle('memoryRead', (proj, file) => contexto.leerMemoria(proj, file));
 handle('memorySave', async (proj, datos) => {
   const r = contexto.guardarMemoria(proj, datos);
@@ -422,7 +465,9 @@ handle('briefing', async (forzar) => {
   return briefing.obtener(snap, ud(), dirBoards(), !!forzar);
 });
 handle('reqConfigure', async (id, valores, opcion) => {
-  const r = requisitos.configurar(ud(), id, valores, opcion);
+  // Se espera a que termine antes de reindexar: instalar una skill es async y
+  // si no, el refresh corre sobre un disco que todavia no cambio.
+  const r = await requisitos.configurar(ud(), id, valores, opcion);
   await store.refresh();
   return r;
 });

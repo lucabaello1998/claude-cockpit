@@ -55,6 +55,20 @@ function Tarjeta({ r, onListo, flash }) {
     } finally { setBusy(false); }
   };
 
+  // Una skill no tiene formulario: instalar es un solo paso, asi que se hace y
+  // se prueba de una, igual que despues de guardar un MCP.
+  const instalarSkill = async (quitar) => {
+    setBusy(true); setPrueba(null);
+    try {
+      await window.cockpit.reqConfigure(r.id, quitar ? { quitar: true } : {}, null);
+      flash(quitar ? r.titulo + ' quitada' : r.titulo + ' instalada');
+      await onListo();
+      if (!quitar) await probar();
+    } catch (e) {
+      setPrueba({ ok: false, texto: String(e.message || e).replace(/^Error:\s*/, '') });
+    } finally { setBusy(false); }
+  };
+
   const guardar = async () => {
     setBusy(true); setPrueba(null); setDespues(null);
     try {
@@ -86,10 +100,17 @@ function Tarjeta({ r, onListo, flash }) {
           <b style={{ fontSize: 13 }}>{r.titulo}</b>
           <div className="dim" style={{ fontSize: 11.5, marginTop: 3, lineHeight: 1.55 }}>{r.habilita}</div>
 
-          {r.detectado && (
+          {r.detectado && r.servidor && (
             <div className="dim" style={{ fontSize: 10.5, marginTop: 5 }}>
               servidor <b>{r.servidor}</b> · alcance {r.alcance}
               {r.definidoPor && <> · lo define <span title={r.definidoPor}>{r.definidoPor.split(/[\\/]/).pop()}</span></>}
+            </div>
+          )}
+
+          {r.tipo === 'skill' && !r.detectado && (
+            <div className="dim" style={{ fontSize: 10.5, marginTop: 5, lineHeight: 1.55 }}>
+              Escribe un <code>SKILL.md</code> en <code>~/.claude/skills</code>. Es un archivo de
+              texto tuyo: se puede leer antes, y se quita de acá mismo.
             </div>
           )}
 
@@ -192,10 +213,20 @@ function Tarjeta({ r, onListo, flash }) {
               Probar
             </button>
           )}
-          {!r.detectado && (opciones.length > 0 || (r.campos || []).length > 0) && !abierto && (
+          {r.instalable && r.detectado && (
+            <button className="btn sm" onClick={() => instalarSkill(true)} disabled={busy}>
+              Quitar
+            </button>
+          )}
+          {r.instalable && !r.detectado && (
+            <button className="btn sm primary" onClick={() => instalarSkill(false)} disabled={busy}>
+              Instalar
+            </button>
+          )}
+          {!r.instalable && !r.detectado && (opciones.length > 0 || (r.campos || []).length > 0) && !abierto && (
             <button className="btn sm primary" onClick={() => setAbierto(true)}>Configurar</button>
           )}
-          {!r.detectado && !opciones.length && !(r.campos || []).length && (
+          {!r.instalable && !r.detectado && !opciones.length && !(r.campos || []).length && (
             <button className="btn sm" onClick={probar} disabled={busy} title="Ver si ya lo tenés instalado">
               Revisar
             </button>
@@ -219,15 +250,18 @@ export default function Requisitos({ flash, compacto }) {
   if (!lista) return <div className="card dim">Revisando…</div>;
 
   const faltan = lista.filter((r) => !r.detectado).length;
+  const skillsFaltan = lista.filter((r) => !r.detectado && r.instalable).length;
 
   return (
     <div>
       {!compacto && (
         <div className="dim" style={{ fontSize: 11.5, marginBottom: 12, lineHeight: 1.6, maxWidth: 640 }}>
-          Nada de esto es obligatorio. Sin ningún servidor MCP la app igual te muestra
-          las conversaciones, los tokens, los costos y las memorias, porque eso sale de
-          leer tus archivos. Lo de acá abajo habilita lo que necesita hablar con un
-          servicio de afuera.
+          Nada de esto es obligatorio. La app igual te muestra las conversaciones, los
+          tokens, los costos y las memorias, porque eso sale de leer tus archivos. Lo de
+          acá abajo son dos cosas distintas: los <b>servidores MCP</b>, que habilitan lo que
+          necesita hablar con un servicio de afuera, y las <b>skills</b>, que hacen que lo
+          que arma Cockpit se pueda usar desde cualquier sesión de Claude Code y no solo
+          con la app abierta.
         </div>
       )}
 
@@ -236,6 +270,14 @@ export default function Requisitos({ flash, compacto }) {
           {faltan === 0
             ? 'Tenés todo lo opcional configurado.'
             : `Hay ${faltan === 1 ? 'una cosa opcional' : faltan + ' cosas opcionales'} sin configurar. Podés hacerlo ahora o después, desde Configuración → Requisitos.`}
+          {/* Las skills son el unico item de esta lista que se resuelve con un
+              clic y sin pedirte nada. Si no se dice, se pierden entre los MCP
+              que si piden token y organizacion, y quedan sin instalar. */}
+          {skillsFaltan > 0 && (
+            <> <b>{skillsFaltan === 1 ? 'La skill se instala' : 'Las skills se instalan'} con un clic</b>, sin
+            token ni configuración: {skillsFaltan === 1 ? 'es' : 'son'} un archivo de texto en tu
+            carpeta y {skillsFaltan === 1 ? 'se quita' : 'se quitan'} igual de fácil.</>
+          )}
         </div>
       )}
 
