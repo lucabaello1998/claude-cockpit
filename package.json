@@ -16,6 +16,7 @@
     "icon": "node scripts/make-icon.cjs"
   },
   "dependencies": {
+    "@xyflow/react": "^12.3.0",
     "chokidar": "^5.0.0",
     "d3-force": "^3.0.0",
     "electron-updater": "^6.8.9"

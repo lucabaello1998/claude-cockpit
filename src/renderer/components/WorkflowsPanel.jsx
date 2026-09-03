@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { fmtBytes } from '../util.js';
+import { reconcileBeforeSave } from '../workflowGraph.js';
+import WorkflowGraphEditor from './WorkflowGraphEditor.jsx';
 
 const COLOR = { parallel: 'var(--blue)', pipeline: 'var(--purple)', secuencial: 'var(--accent)' };
 const AYUDA = {
@@ -142,6 +144,10 @@ export default function WorkflowsPanel({ flash }) {
   const [borrador, setBorrador] = useState('');
   const [tutorial, setTutorial] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Se incrementa cada vez que el contenido "de verdad" cambia (Guardar,
+  // Descartar): fuerza que el editor visual vuelva a leer desde cero en vez
+  // de seguir mostrando un grafo que ya no corresponde al archivo.
+  const [graphTick, setGraphTick] = useState(0);
 
   const cargar = useCallback(async () => {
     try { setDatos(await window.cockpit.workflowsList()); }
@@ -219,6 +225,9 @@ export default function WorkflowsPanel({ flash }) {
             <button className={'btn sm' + (vista === 'diagrama' ? ' primary' : '')} onClick={() => setVista('diagrama')}>
               Diagrama
             </button>
+            <button className={'btn sm' + (vista === 'grafico' ? ' primary' : '')} onClick={() => setVista('grafico')}>
+              Editor visual
+            </button>
             <button className={'btn sm' + (vista === 'codigo' ? ' primary' : '')} onClick={() => setVista('codigo')}>
               Código
             </button>
@@ -234,9 +243,22 @@ export default function WorkflowsPanel({ flash }) {
             </div>
           )}
 
-          {vista === 'diagrama' ? (
-            <Diagrama a={abierto.analisis} />
-          ) : (
+          {vista === 'diagrama' && <Diagrama a={abierto.analisis} />}
+
+          {/* No se desmonta al cambiar de pestaña (solo se oculta), para no perder
+              el layout del grafo a mitad de edición. Se resetea con la key cuando
+              se abre otro archivo o cuando el contenido guardado cambia de verdad. */}
+          <div style={{ display: vista === 'grafico' ? 'block' : 'none' }}>
+            <WorkflowGraphEditor
+              key={abierto.file + ':' + graphTick}
+              content={borrador}
+              analisis={abierto.analisis}
+              active={vista === 'grafico'}
+              onGenerate={(src) => { setBorrador(src); setVista('codigo'); }}
+            />
+          </div>
+
+          {vista === 'codigo' && (
             <>
               <textarea
                 value={borrador}
@@ -246,14 +268,22 @@ export default function WorkflowsPanel({ flash }) {
               <div className="row" style={{ gap: 6, marginTop: 8 }}>
                 <button
                   className="btn sm primary" disabled={busy || borrador === abierto.content}
-                  onClick={() => correr(async () => {
-                    const d = await window.cockpit.workflowSave(abierto.file, borrador);
-                    setAbierto(d); setBorrador(d.content);
-                  }, 'Workflow guardado')}
+                  onClick={() => {
+                    const { content, graphDropped } = reconcileBeforeSave(borrador);
+                    correr(async () => {
+                      const d = await window.cockpit.workflowSave(abierto.file, content);
+                      setAbierto(d); setBorrador(d.content); setGraphTick((t) => t + 1);
+                    }, graphDropped
+                      ? 'Workflow guardado como código plano: la edición manual invalidó el diagrama generado.'
+                      : 'Workflow guardado');
+                  }}
                 >
                   Guardar
                 </button>
-                <button className="btn sm" disabled={borrador === abierto.content} onClick={() => setBorrador(abierto.content)}>
+                <button
+                  className="btn sm" disabled={borrador === abierto.content}
+                  onClick={() => { setBorrador(abierto.content); setGraphTick((t) => t + 1); }}
+                >
                   Descartar cambios
                 </button>
                 <button
