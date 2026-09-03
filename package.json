@@ -1,6 +1,6 @@
 {
   "name": "claude-cockpit",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Dashboard de escritorio para tu instalación local de Claude Code: uso, costos, conversaciones, memorias, MCPs, workflows y boards.",
   "main": "electron/main.cjs",
   "type": "module",
