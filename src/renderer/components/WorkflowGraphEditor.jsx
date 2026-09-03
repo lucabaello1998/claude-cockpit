@@ -92,6 +92,10 @@ const NODE_TYPES = { phase: PhaseNode, note: NoteNode, agent: AgentNode, group: 
 
 // --- panel de propiedades ----------------------------------------------------
 
+function Ejemplo({ children }) {
+  return <div className="dim" style={{ fontSize: 10, lineHeight: 1.5, margin: '3px 0 0' }}>{children}</div>;
+}
+
 function Inspector({ node, varsDisponibles, onChange, onDelete, onSalirDelGrupo }) {
   const d = node.data;
   return (
@@ -104,36 +108,51 @@ function Inspector({ node, varsDisponibles, onChange, onDelete, onSalirDelGrupo 
       {node.type === 'agent' && (
         <>
           <label className="dim" style={{ fontSize: 10.5 }}>Label</label>
-          <input value={d.label} onChange={(e) => onChange({ label: e.target.value })} style={{ width: '100%', marginBottom: 8 }} />
+          <input
+            value={d.label} onChange={(e) => onChange({ label: e.target.value })}
+            placeholder="Ej: revisar-diff, buscar-precedentes"
+            style={{ width: '100%' }}
+          />
+          <Ejemplo>Corto y descriptivo — es el nombre que vas a ver en los logs y en el Diagrama.</Ejemplo>
 
-          <label className="dim" style={{ fontSize: 10.5 }}>
+          <label className="dim" style={{ fontSize: 10.5, marginTop: 8, display: 'block' }}>
             Prompt {!d.promptIsExpr && '· podés usar {{prev}} y {{args}}'}
           </label>
           <textarea
             value={d.prompt}
             onChange={(e) => onChange({ prompt: e.target.value })}
-            style={{ width: '100%', minHeight: 90, fontFamily: d.promptIsExpr ? 'ui-monospace, monospace' : 'inherit', marginBottom: 6, fontSize: 12 }}
+            placeholder={d.promptIsExpr
+              ? "Ej: 'Revisá ' + args.alcance + ' y reportá bugs.'"
+              : 'Ej: Revisá el diff con git diff y reportá bugs de seguridad y de lógica.\nContexto: {{args}}'}
+            style={{ width: '100%', minHeight: 90, fontFamily: d.promptIsExpr ? 'ui-monospace, monospace' : 'inherit', fontSize: 12 }}
           />
-          <label className="row" style={{ fontSize: 11, marginBottom: 8, gap: 6 }}>
+          <Ejemplo>
+            {d.promptIsExpr
+              ? 'Expresión JS cruda: se pega tal cual en el código, sin comillas alrededor.'
+              : '{{prev}} inserta el resultado del paso anterior; {{args}} inserta lo que le pasás al workflow al invocarlo.'}
+          </Ejemplo>
+          <label className="row" style={{ fontSize: 11, margin: '8px 0', gap: 6 }}>
             <input type="checkbox" checked={!!d.promptIsExpr} onChange={(e) => onChange({ promptIsExpr: e.target.checked })} />
             Usar expresión JS cruda
           </label>
 
           <label className="dim" style={{ fontSize: 10.5 }}>Effort</label>
-          <select value={d.effort || ''} onChange={(e) => onChange({ effort: e.target.value })} style={{ width: '100%', marginBottom: 8 }}>
+          <select value={d.effort || ''} onChange={(e) => onChange({ effort: e.target.value })} style={{ width: '100%' }}>
             <option value="">(default)</option>
             <option value="low">low</option>
             <option value="medium">medium</option>
             <option value="high">high</option>
           </select>
+          <Ejemplo><span className="mono">low</span> para lecturas simples, <span className="mono">high</span> para las que necesitan más criterio.</Ejemplo>
 
-          <label className="dim" style={{ fontSize: 10.5 }}>Schema (objeto JS, opcional)</label>
+          <label className="dim" style={{ fontSize: 10.5, marginTop: 8, display: 'block' }}>Schema (objeto JS, opcional)</label>
           <textarea
             value={d.schemaText}
             onChange={(e) => onChange({ schemaText: e.target.value })}
-            placeholder="{ type: 'object', properties: {...} }"
+            placeholder={"Ej: { type: 'object', properties: { hallazgos: { type: 'array' } }, required: ['hallazgos'] }"}
             style={{ width: '100%', minHeight: 70, fontFamily: 'ui-monospace, monospace', fontSize: 11 }}
           />
+          <Ejemplo>Si lo dejás vacío, el agente devuelve texto libre en vez de un objeto con esta forma.</Ejemplo>
 
           {onSalirDelGrupo && (
             <button className="btn sm" style={{ marginTop: 8 }} onClick={onSalirDelGrupo}>Sacar del grupo</button>
@@ -142,15 +161,36 @@ function Inspector({ node, varsDisponibles, onChange, onDelete, onSalirDelGrupo 
       )}
 
       {node.type === 'note' && (
-        <textarea value={d.text} onChange={(e) => onChange({ text: e.target.value })} style={{ width: '100%', minHeight: 90, fontSize: 12 }} />
+        <>
+          <textarea
+            value={d.text} onChange={(e) => onChange({ text: e.target.value })}
+            placeholder="Ej: Esta etapa asume que el build ya corrió antes."
+            style={{ width: '100%', minHeight: 90, fontSize: 12 }}
+          />
+          <Ejemplo>Se convierte en un comentario (<span className="mono">// texto</span>) — no ejecuta nada.</Ejemplo>
+        </>
       )}
 
       {node.type === 'phase' && (
-        <input value={d.title} onChange={(e) => onChange({ title: e.target.value })} style={{ width: '100%' }} />
+        <>
+          <input
+            value={d.title} onChange={(e) => onChange({ title: e.target.value })}
+            placeholder="Ej: Revisar, Verificar, Investigar"
+            style={{ width: '100%' }}
+          />
+          <Ejemplo>Corto — aparece tal cual en <span className="mono">meta.phases</span> y en las columnas del Diagrama.</Ejemplo>
+        </>
       )}
 
       {node.type === 'group' && (
-        <input value={d.label} onChange={(e) => onChange({ label: e.target.value })} style={{ width: '100%' }} />
+        <>
+          <input
+            value={d.label} onChange={(e) => onChange({ label: e.target.value })}
+            placeholder="Ej: Chequeos, Búsquedas"
+            style={{ width: '100%' }}
+          />
+          <Ejemplo>Solo cosmético (para ubicarte en el canvas) — no aparece en el código generado.</Ejemplo>
+        </>
       )}
 
       {node.type === 'return' && (
@@ -158,8 +198,14 @@ function Inspector({ node, varsDisponibles, onChange, onDelete, onSalirDelGrupo 
           <textarea
             value={d.expression}
             onChange={(e) => onChange({ expression: e.target.value })}
+            placeholder="Ej: { hallazgos: r2 }"
             style={{ width: '100%', minHeight: 70, fontFamily: 'ui-monospace, monospace', fontSize: 12 }}
           />
+          <Ejemplo>
+            Expresión JS cruda para el <span className="mono">return</span> final. Combiná{' '}
+            {varsDisponibles.length > 0 ? varsDisponibles.map((v) => v.v).join(', ') : 'r1, r2…'}{' '}
+            (resultado de cada paso anterior, en orden).
+          </Ejemplo>
           {varsDisponibles.length > 0 && (
             <div className="dim" style={{ fontSize: 10.5, marginTop: 6 }}>
               Variables disponibles: {varsDisponibles.map((v) => `${v.v} (${v.label})`).join(', ')}

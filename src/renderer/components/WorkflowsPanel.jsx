@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { fmtBytes } from '../util.js';
-import { reconcileBeforeSave } from '../workflowGraph.js';
+import { reconcileBeforeSave, analisisVacio } from '../workflowGraph.js';
 import WorkflowGraphEditor from './WorkflowGraphEditor.jsx';
 
 const COLOR = { parallel: 'var(--blue)', pipeline: 'var(--purple)', secuencial: 'var(--accent)' };
@@ -9,6 +9,140 @@ const AYUDA = {
   pipeline: 'Encadenado: sigue en cuanto este item está listo, sin esperar a los demás.',
   secuencial: 'Corre solo, uno después del otro.',
 };
+
+function Flecha() {
+  return <span style={{ alignSelf: 'center', color: 'var(--dim)', fontSize: 18, padding: '0 2px' }}>→</span>;
+}
+
+function Rotulo({ children, w }) {
+  return <div className="dim" style={{ fontSize: 10, lineHeight: 1.5, marginTop: 5, width: w || 140 }}>{children}</div>;
+}
+
+// Ejemplo de una cadena que usa los 4 componentes que arman el flujo (falta
+// Nota, que no participa de la cadena — se explica aparte). Mismas clases
+// .wfnode* que el canvas real, para que el "cómo se ve" sea honesto.
+function EjemploEditorVisual() {
+  return (
+    <div>
+      <div className="row" style={{ gap: 8, alignItems: 'flex-start', flexWrap: 'nowrap' }}>
+        <div>
+          <div className="wfnode wfnode-phase" style={{ minWidth: 100 }}>
+            <b style={{ fontSize: 11.5 }}>Revisar</b>
+          </div>
+          <Rotulo><b>Etapa</b>: arranca una fase nueva. El título va a <span className="mono">meta.phases</span>.</Rotulo>
+        </div>
+
+        <Flecha />
+
+        <div>
+          <div className="wfnode wfnode-agent" style={{ minWidth: 160 }}>
+            <div className="mono" style={{ fontSize: 11 }}>buscar-info</div>
+            <div className="dim mono" style={{ fontSize: 9, marginTop: 3 }}>"Buscá info sobre {'{{args}}'}"</div>
+          </div>
+          <Rotulo w={170}><b>Agente</b>: el prompt puede usar <span className="mono">{'{{args}}'}</span> (lo que le pasás al workflow) y <span className="mono">{'{{prev}}'}</span> (resultado del paso anterior).</Rotulo>
+        </div>
+
+        <Flecha />
+
+        <div>
+          <div className="wfnode-group-box" style={{ position: 'relative', width: 190, padding: '8px 8px 6px', boxSizing: 'border-box' }}>
+            <div className="wfnode-group-label" style={{ position: 'static', marginBottom: 6 }}>Grupo paralelo</div>
+            <div className="wfnode wfnode-agent" style={{ marginBottom: 6 }}>
+              <div className="mono" style={{ fontSize: 10 }}>chequear-a</div>
+            </div>
+            <div className="wfnode wfnode-agent">
+              <div className="mono" style={{ fontSize: 10 }}>chequear-b</div>
+            </div>
+          </div>
+          <Rotulo w={190}><b>Grupo paralelo</b>: soltá 2 o más agentes adentro del rectángulo — corren todos juntos y el flujo espera a que terminen antes de seguir.</Rotulo>
+        </div>
+
+        <Flecha />
+
+        <div>
+          <div className="wfnode wfnode-return" style={{ minWidth: 150 }}>
+            <b style={{ fontSize: 11 }}>return</b>
+            <div className="mono dim" style={{ fontSize: 9.5 }}>{'{ resultados: r2 }'}</div>
+          </div>
+          <Rotulo w={150}><b>Return</b>: lo que el workflow entrega al final. Podés combinar r1, r2… (resultado de cada paso anterior, en orden).</Rotulo>
+        </div>
+      </div>
+
+      <div className="dim" style={{ fontSize: 10.5, marginTop: 14, borderTop: '1px solid var(--line-soft)', paddingTop: 8 }}>
+        <b style={{ color: 'var(--text)' }}>Nota / instrucción</b> — no participa de esta cadena, pero podés soltarla en
+        cualquier punto del canvas: es un comentario libre (se convierte en <span className="mono">// texto</span> en
+        el código) para dejarle una aclaración a quien lea o edite el workflow después.
+      </div>
+    </div>
+  );
+}
+
+// Mismo ejemplo, pero como lo ve la pestaña Diagrama: de solo lectura, con
+// el color/chip de concurrencia en vez del contenido editable.
+function EjemploDiagrama() {
+  return (
+    <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
+      <div>
+        <div className="wfnode wfnode-phase" style={{ minWidth: 100 }}>
+          <b style={{ fontSize: 11.5 }}>Revisar</b>
+        </div>
+        <Rotulo>Columna por etapa.</Rotulo>
+      </div>
+      <Flecha />
+      <div>
+        <div className="tarjeta" style={{ borderLeftColor: COLOR.pipeline, cursor: 'default', minWidth: 140 }}>
+          <div className="mono" style={{ fontSize: 11 }}>revisar:*</div>
+          <div className="row wrap" style={{ gap: 3, marginTop: 4 }}>
+            <span className="chip" style={{ fontSize: 9, borderColor: COLOR.pipeline, color: COLOR.pipeline }}>pipeline</span>
+            <span className="chip on" style={{ fontSize: 9 }}>schema</span>
+          </div>
+        </div>
+        <Rotulo w={150}>Cada tarjeta es un <span className="mono">agent()</span>. El color dice cómo corre — acá, encadenado.</Rotulo>
+      </div>
+      <Flecha />
+      <div>
+        <div className="tarjeta" style={{ borderLeftColor: COLOR.parallel, cursor: 'default', minWidth: 140 }}>
+          <div className="mono" style={{ fontSize: 11 }}>verificar:*</div>
+          <div className="row wrap" style={{ gap: 3, marginTop: 4 }}>
+            <span className="chip" style={{ fontSize: 9, borderColor: COLOR.parallel, color: COLOR.parallel }}>parallel</span>
+          </div>
+        </div>
+        <Rotulo w={150}>Acá, en paralelo con sus hermanos — el asterisco marca un label armado por concatenación.</Rotulo>
+      </div>
+    </div>
+  );
+}
+
+// Guía corta de las 3 vistas de un workflow abierto (no de cómo escribir el
+// código en sí — para eso está "Cómo se arma uno"). Mismo componente
+// Tutorial que ya existe, con otro contenido.
+const GUIA_VISTAS = [
+  {
+    titulo: 'Diagrama',
+    texto: 'Vista de solo lectura. Agentes agrupados por etapa, coloreados según cómo corren: '
+      + 'en paralelo, encadenados (pipeline) o uno por uno. Sale de leer el código, no de '
+      + 'ejecutarlo — sirve para entender de un vistazo un workflow ya escrito, sea tuyo o de una plantilla.',
+    visual: <EjemploDiagrama />,
+  },
+  {
+    titulo: 'Editor visual',
+    texto: 'La forma fácil de armar uno nuevo sin escribir JS: arrastrás componentes de la '
+      + 'paleta al canvas y los conectás con flechas. "Aplicar cambios" escribe el código real '
+      + '(meta/phase/agent/parallel) por vos, listo para guardar desde la pestaña Código. '
+      + 'Así se usa cada componente:',
+    visual: <EjemploEditorVisual />,
+    ojo: 'Todavía no genera pipeline(): un workflow que lo usa se ve acá de solo lectura, con '
+      + 'un botón para "Empezar un diagrama nuevo" si preferís rearmarlo desde cero.',
+  },
+  {
+    titulo: 'Código',
+    texto: 'El archivo .js real. Para todo lo que el editor visual no cubre todavía —pipeline(), '
+      + 'lógica sobre args, schemas complejos— se edita acá a mano.',
+    codigo: "export const meta = { name: 'mi-workflow', phases: [{ title: 'Etapa' }] }\n\n"
+      + "const r = await agent('...', { label: 'x' })\nreturn r",
+    ojo: 'Guardar valida que tenga meta con name antes de escribir, y deja un .bak por las dudas.',
+  },
+];
 
 // Diagrama por capas: una columna por etapa, los agentes apilados adentro.
 // No es force-directed a propósito: un workflow tiene orden, y un grafo con
@@ -122,6 +256,12 @@ function Tutorial({ pasos }) {
       <b style={{ fontSize: 13.5 }}>{p.titulo}</b>
       <div style={{ fontSize: 12.5, lineHeight: 1.7, margin: '8px 0' }}>{p.texto}</div>
 
+      {p.visual && (
+        <div className="block" style={{ marginBottom: 8, overflowX: 'auto' }}>
+          {p.visual}
+        </div>
+      )}
+
       {p.codigo && (
         <div className="block" style={{ marginBottom: 8 }}>
           <pre style={{ fontSize: 11.5 }}>{p.codigo}</pre>
@@ -143,6 +283,7 @@ export default function WorkflowsPanel({ flash }) {
   const [vista, setVista] = useState('diagrama');
   const [borrador, setBorrador] = useState('');
   const [tutorial, setTutorial] = useState(false);
+  const [guiaVistas, setGuiaVistas] = useState(false);
   const [busy, setBusy] = useState(false);
   // Se incrementa cada vez que el contenido "de verdad" cambia (Guardar,
   // Descartar): fuerza que el editor visual vuelva a leer desde cero en vez
@@ -174,6 +315,18 @@ export default function WorkflowsPanel({ flash }) {
     finally { setBusy(false); }
   };
 
+  // No se guarda nada todavía: se abre en memoria (como "Ver" en una
+  // plantilla) directo en el editor visual, en blanco. fromAnalysis()
+  // detecta que no hay nada que aproximar y arranca editable de una.
+  const crearNuevo = () => {
+    let file = 'nuevo-workflow.js';
+    let n = 1;
+    while (datos.workflows.some((w) => w.file === file)) { n += 1; file = `nuevo-workflow-${n}.js`; }
+    setAbierto({ file, path: '(sin guardar)', content: '', analisis: analisisVacio() });
+    setBorrador('');
+    setVista('grafico');
+  };
+
   if (!datos) return <div className="card dim">Cargando…</div>;
 
   return (
@@ -181,15 +334,19 @@ export default function WorkflowsPanel({ flash }) {
       <div className="card">
         <div className="row wrap" style={{ gap: 6, marginBottom: 10 }}>
           <h3 style={{ margin: 0 }}>Workflows ({datos.workflows.length})</h3>
+          <button className="btn sm primary" onClick={crearNuevo}>Crear nuevo workflow</button>
           <button className={'btn sm' + (tutorial ? ' primary' : '')} onClick={() => setTutorial((v) => !v)}>
             {tutorial ? 'Cerrar tutorial' : 'Cómo se arma uno'}
+          </button>
+          <button className={'btn sm' + (guiaVistas ? ' primary' : '')} onClick={() => setGuiaVistas((v) => !v)}>
+            {guiaVistas ? 'Cerrar guía' : 'Qué es cada vista'}
           </button>
           <span className="dim right mono" style={{ fontSize: 10.5 }}>{datos.dir}</span>
         </div>
 
         {!datos.workflows.length && (
           <div className="dim" style={{ fontSize: 12 }}>
-            No tenés ninguno. Empezá por una plantilla de abajo.
+            No tenés ninguno. Creá uno desde cero o empezá por una plantilla de abajo.
           </div>
         )}
 
@@ -216,6 +373,7 @@ export default function WorkflowsPanel({ flash }) {
       </div>
 
       {tutorial && <Tutorial pasos={datos.tutorial} />}
+      {guiaVistas && !abierto && <Tutorial pasos={GUIA_VISTAS} />}
 
       {abierto && (
         <div className="card">
@@ -231,11 +389,16 @@ export default function WorkflowsPanel({ flash }) {
             <button className={'btn sm' + (vista === 'codigo' ? ' primary' : '')} onClick={() => setVista('codigo')}>
               Código
             </button>
+            <button className={'btn sm' + (guiaVistas ? ' primary' : '')} onClick={() => setGuiaVistas((v) => !v)}>
+              {guiaVistas ? 'Cerrar guía' : '¿Qué es cada vista?'}
+            </button>
             <div className="right row" style={{ gap: 6 }}>
               <button className="btn sm" onClick={() => window.cockpit.revealPath(abierto.path)}>Ver archivo</button>
               <button className="btn sm" onClick={() => { setAbierto(null); setBorrador(''); }}>Cerrar</button>
             </div>
           </div>
+
+          {guiaVistas && <Tutorial pasos={GUIA_VISTAS} />}
 
           {abierto.analisis.whenToUse && (
             <div className="block" style={{ marginBottom: 10, fontSize: 11.5 }}>
@@ -263,6 +426,8 @@ export default function WorkflowsPanel({ flash }) {
               <textarea
                 value={borrador}
                 onChange={(e) => setBorrador(e.target.value)}
+                placeholder={"Vacío todavía. Podés escribirlo directo acá, o ir a 'Editor visual' y tocar "
+                  + "'Aplicar cambios' para que lo genere solo."}
                 style={{ width: '100%', minHeight: 420, fontFamily: 'ui-monospace, monospace', fontSize: 11.5 }}
               />
               <div className="row" style={{ gap: 6, marginTop: 8 }}>

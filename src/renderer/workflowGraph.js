@@ -340,9 +340,14 @@ function fromAnalysis(analisis) {
     }
     x += 240;
   }
+  // Un análisis sin nada adentro (archivo nuevo, todavía sin guardar) no tiene
+  // nada que aproximar ni nada que se pueda pisar por error: arranca editable
+  // de una, en vez de obligar a pasar por "Empezar un diagrama nuevo".
+  const hayAlgo = !!(analisis?.tieneMeta || (analisis?.agentes && analisis.agentes.length));
+
   return {
     version: 1,
-    readOnly: true,
+    readOnly: hayAlgo,
     usaPipeline: !!analisis?.usaPipeline,
     meta: { name: analisis?.name || '', description: analisis?.description || '', whenToUse: analisis?.whenToUse || '' },
     nodes,
@@ -350,9 +355,19 @@ function fromAnalysis(analisis) {
   };
 }
 
+// Misma forma que devuelve analizar('') en workflowsEdit.cjs (main process,
+// no importable desde el renderer) — para poder abrir un workflow nuevo sin
+// guardar todavía sin duplicar la lógica de análisis en dos lugares.
+function analisisVacio() {
+  return {
+    name: null, description: null, whenToUse: null, tieneMeta: false,
+    fases: [], agentes: [], sinFase: 0, usaParallel: false, usaPipeline: false, usaArgs: false, lineas: 1,
+  };
+}
+
 export {
   emptyGraph, makeNode, makeAgentNode, makeNoteNode, makePhaseNode, makeGroupNode, makeReturnNode,
   labelOf, previewChain, validateGraph, buildTextExpr, buildScriptBody,
   embedGraph, generateSource, extractGraph, stripEmbeddedGraph, reconcileBeforeSave,
-  fromAnalysis, hashCode,
+  fromAnalysis, analisisVacio, hashCode,
 };
