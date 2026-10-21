@@ -79,7 +79,7 @@
     "type": "git",
     "url": "https://github.com/lucabaello1998/claude-cockpit"
   },
-  "license": "UNLICENSED",
+  "license": "MIT",
   "keywords": [
     "claude-code",
     "electron",

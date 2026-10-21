@@ -14,6 +14,10 @@
   <a href="README.md">Español</a> · <b>English</b>
 </p>
 
+> **Legacy / unmaintained:** this is the Claude-only predecessor of
+> [OpenCockpit](https://github.com/lucabaello1998/OpenCockpit). It no longer gets
+> new features. Use OpenCockpit for the multi-tool version.
+
 ---
 
 Claude Code leaves a lot of information on your disk: every conversation, the
@@ -186,8 +190,7 @@ release notes, and you choose when to download and when to restart.
 
 ## License
 
-All rights reserved. The source is here so you can read it, but no license to
-use, copy, modify or distribute is granted.
+MIT. See [LICENSE](LICENSE).
 
 ---
 

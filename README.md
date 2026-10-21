@@ -14,8 +14,12 @@
   <b>Español</b> · <a href="README.en.md">English</a>
 </p>
 
+> **Legacy / sin mantenimiento:** este repo es la versión Claude-only que dio
+> origen a [OpenCockpit](https://github.com/lucabaello1998/OpenCockpit). No recibe
+> features nuevas. Para la versión multi-herramienta, usá OpenCockpit.
+
 <p align="center">
-  <a href="https://github.com/lucabaello1998/claude-cockpit/releases/latest"><b>⬇ Descargar el instalador</b></a>
+  <a href="https://github.com/lucabaello1998/claude-cockpit/releases/latest"><b>⬇ Descargar el instalador (legacy)</b></a>
 </p>
 
 ---
@@ -194,8 +198,7 @@ instalación inicial.
 
 ## Licencia
 
-Todos los derechos reservados. El código está a la vista para que puedas leerlo,
-pero no se otorga licencia de uso, copia, modificación ni distribución.
+MIT. Ver [LICENSE](LICENSE).
 
 ---
 
