@@ -32,6 +32,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Dependencias de producción sin vulnerabilidades altas
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Auditoría (seguridad y correctitud)
         run: npm run audit
 
