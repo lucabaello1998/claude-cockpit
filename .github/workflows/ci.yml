@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  calidad:
+    # Repo legacy: no recibe features, pero tiene que seguir corriendo. Windows y
+    # no ubuntu porque el target es el instalador NSIS y la auditoria recorre
+    # rutas del disco (%APPDATA%, backslashes).
+    name: Lint + auditoría + build
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Instalar
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Auditoría (seguridad y correctitud)
+        run: npm run audit
+
+      - name: Build del renderer
+        run: npx vite build
+
+      - name: Empaquetar sin publicar
+        run: npx electron-builder --dir

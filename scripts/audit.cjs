@@ -3,6 +3,7 @@
 const path0 = require('path');
 const B = path0.join(__dirname, '..') + path0.sep;
 const fs = require('fs'); const path = require('path'); const os = require('os');
+const { spawnSync } = require('child_process');
 const seguro = require(B + 'src/main/safePaths.cjs');
 const se = require(B + 'src/main/skillsEdit.cjs');
 const pe = require(B + 'src/main/pluginsEdit.cjs');
@@ -920,10 +921,40 @@ console.log('\n-- ronda 11: requisitos --');
   // ultimo), este chequeo no tiene que quedar viejo.
   esperar('se listan todos los requisitos declarados', est.length === req.REQUISITOS.length, String(est.length));
   esperar('cada uno dice para que sirve', est.every((r) => r.habilita && r.habilita.length > 20));
-  esperar('se detecta lo que ya esta instalado', est.some((r) => r.detectado));
+  esperar('la deteccion es booleana y nunca dice detectado sin servidor',
+    est.every((r) => typeof r.detectado === 'boolean' && (!r.detectado || r.tipo === 'skill' || !!r.servidor)),
+    JSON.stringify(est.filter((r) => r.detectado && r.tipo !== 'skill').map((r) => r.servidor)));
   // El skill no es un servidor: "de donde sale" solo aplica a los MCP.
   esperar('y se dice de donde sale el servidor',
     est.filter((r) => r.detectado && r.tipo === 'mcp').every((r) => !!r.alcance));
+
+  // La deteccion lee los archivos de configuracion del usuario, que en una
+  // maquina limpia (o en CI) no existen: antes se pedia que ALGUNO estuviera
+  // detectado y la suite fallaba segun la maquina. Se prueba en un proceso
+  // aparte con un HOME de mentira que declara un servidor.
+  {
+    const hogar = path.join(os.tmpdir(), 'cockpit-audit-hogar');
+    fs.rmSync(hogar, { recursive: true, force: true });
+    fs.mkdirSync(hogar, { recursive: true });
+    fs.writeFileSync(path.join(hogar, '.claude.json'), JSON.stringify({
+      mcpServers: { ado: { command: 'npx', args: ['-y', '@azure-devops/mcp'] } },
+    }), 'utf8');
+    const codigo = 'const r = require(' + JSON.stringify(B + 'src/main/requisitos.cjs') + ');'
+      + 'const e = r.estado().find((x) => x.id === "ado");'
+      + 'process.stdout.write(JSON.stringify({ detectado: e.detectado, servidor: e.servidor, alcance: e.alcance }));';
+    const hijo = spawnSync(process.execPath, ['-e', codigo], {
+      encoding: 'utf8',
+      // USERPROFILE es el que usa os.homedir() en Windows; HOME, en Linux y macOS.
+      env: { ...process.env, USERPROFILE: hogar, HOME: hogar },
+    });
+    let leido = {};
+    try { leido = JSON.parse(hijo.stdout || '{}'); } catch { leido = {}; }
+    esperar('se detecta un MCP declarado en la configuracion',
+      leido.detectado === true && leido.servidor === 'ado', hijo.stdout || hijo.stderr);
+    esperar('y se dice que lo define el usuario, no un proyecto',
+      leido.alcance === 'usuario', String(leido.alcance));
+    fs.rmSync(hogar, { recursive: true, force: true });
+  }
 
   // El token de Azure DevOps va en base64 de "usuario:token": pedirle eso al
   // usuario seria una trampa, asi que se acepta el token crudo y se codifica.

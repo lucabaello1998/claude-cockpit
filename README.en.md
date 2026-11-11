@@ -5,7 +5,7 @@
 <p align="center">
   <img alt="Electron" src="https://img.shields.io/badge/Electron-44-2b2b28?style=flat-square&labelColor=1a1a18">
   <img alt="React" src="https://img.shields.io/badge/React-19-2b2b28?style=flat-square&labelColor=1a1a18">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-289%20passing-3d7a3d?style=flat-square&labelColor=1a1a18">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-323%20passing-3d7a3d?style=flat-square&labelColor=1a1a18">
   <img alt="No telemetry" src="https://img.shields.io/badge/telemetry-none-d97757?style=flat-square&labelColor=1a1a18">
   <img alt="Windows" src="https://img.shields.io/badge/Windows-installer-2b2b28?style=flat-square&labelColor=1a1a18">
 </p>
@@ -49,8 +49,9 @@ npm start          # build and open the app
 |---|---|
 | `npm run dev` | Vite + Electron with hot reload |
 | `npm start` | build and open the app |
+| `npm run lint` | ESLint across the repo |
 | `npm run dist` | NSIS installer in `release/` |
-| `npm run audit` | the security and correctness suite |
+| `npm run audit` | the security and correctness suite (323 checks) |
 | `npm run icon` | regenerate `build/icon.ico` |
 
 Requires **Node 20+**. Tested on Windows. Nothing in the code is
@@ -149,10 +150,16 @@ security model isn't an afterthought:
 npm run audit
 ```
 
-289 checks. Not smoke tests: they **actively try to exploit every write
+323 checks. Not smoke tests: they **actively try to exploit every write
 surface** (traversal, symlinks, command injection, prototype pollution, negative
 indices) and verify it stays contained. The suite grew out of real holes that
 were found and fixed.
+
+It runs on any machine: whatever depends on the user's configuration (detected
+MCP servers) is tested in a separate process with a temporary `HOME`, so it does
+not fail based on what you happen to have installed. CI
+(`.github/workflows/ci.yml`) runs lint, the audit, the Vite build and
+`electron-builder --dir` on every push and PR.
 
 ## What leaves your machine
 

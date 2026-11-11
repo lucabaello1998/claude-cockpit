@@ -5,7 +5,7 @@
 <p align="center">
   <img alt="Electron" src="https://img.shields.io/badge/Electron-44-2b2b28?style=flat-square&labelColor=1a1a18">
   <img alt="React" src="https://img.shields.io/badge/React-19-2b2b28?style=flat-square&labelColor=1a1a18">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-289%20passing-3d7a3d?style=flat-square&labelColor=1a1a18">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-323%20passing-3d7a3d?style=flat-square&labelColor=1a1a18">
   <img alt="Sin telemetría" src="https://img.shields.io/badge/telemetr%C3%ADa-ninguna-d97757?style=flat-square&labelColor=1a1a18">
   <img alt="Windows" src="https://img.shields.io/badge/Windows-instalador-2b2b28?style=flat-square&labelColor=1a1a18">
 </p>
@@ -53,8 +53,9 @@ npm start          # build + abrir la app
 |---|---|
 | `npm run dev` | Vite + Electron con hot reload |
 | `npm start` | build y abre la app |
+| `npm run lint` | ESLint sobre todo el repo |
 | `npm run dist` | instalador NSIS en `release/` |
-| `npm run audit` | la suite de seguridad y correctitud |
+| `npm run audit` | la suite de seguridad y correctitud (323 comprobaciones) |
 | `npm run icon` | regenera `build/icon.ico` |
 
 Necesita **Node 20+**. Está probado en Windows; el código no tiene nada
@@ -155,10 +156,16 @@ que el modelo de seguridad no es un detalle:
 npm run audit
 ```
 
-289 pruebas. No son tests de humo: **intentan explotar cada superficie de
+323 pruebas. No son tests de humo: **intentan explotar cada superficie de
 escritura** (traversal, symlinks, inyección de comandos, contaminación de
 prototipo, índices negativos) y verifican que quede contenido. La suite creció
 a partir de agujeros reales que se encontraron y se corrigieron.
+
+Corre en cualquier máquina: lo que depende de la configuración del usuario (los
+MCP detectados) se prueba en un proceso aparte con un `HOME` temporal, así que no
+falla por tener o no tener MCP instalados. El CI (`.github/workflows/ci.yml`)
+corre lint, la auditoría, el build de Vite y `electron-builder --dir` en cada
+push y PR.
 
 ## Qué sale a internet
 
